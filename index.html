@@ -1,0 +1,1988 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="description" content="Starship Typer: a free space typing game for kids.">
+<style>:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0}img{max-width:100%}[hidden]{display:none!important}</style>
+<title>Starship Typer</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bungee&family=Atkinson+Hyperlegible:wght@400;700&display=swap">
+<style>
+/* Layout: full-bleed starfield canvas, slim HUD on top, finger-colored keyboard docked at the bottom, overlays for menu / pause / game over. Single deliberate dark "deep space" look. */
+:root {
+  --void: #080a22;
+  --nebula: #2b1d5e;
+  --star: #eef0ff;
+  --hull: #ffc94a;
+  --laser: #5ff2ff;
+  --danger: #ff5d73;
+  --good: #7dffb0;
+  --panel: rgba(14, 16, 46, 0.9);
+  --line: rgba(150, 160, 255, 0.24);
+  --muted: #a8acd8;
+  --f0: #ff8fc8; /* pinky */
+  --f1: #ffb35c; /* ring */
+  --f2: #8fe388; /* middle */
+  --f3: #6fc3ff; /* index */
+  --f4: #c9ccef; /* thumb */
+  --display: "Bungee", "Arial Black", Impact, system-ui, sans-serif;
+  --body: "Atkinson Hyperlegible", Verdana, system-ui, sans-serif;
+  color-scheme: dark;
+}
+*, *::before, *::after { box-sizing: border-box; }
+html, body { height: 100%; }
+body {
+  background: var(--void);
+  color: var(--star);
+  font-family: var(--body);
+  font-size: 16px;
+  overflow: hidden;
+  -webkit-user-select: none;
+  user-select: none;
+  touch-action: manipulation;
+}
+#app { position: relative; height: 100%; overflow: hidden; }
+#game { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+
+/* HUD */
+.hud {
+  position: absolute; top: 0; left: 0; right: 0;
+  display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap;
+  padding-block: 12px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  pointer-events: none;
+}
+.stats { display: flex; gap: 22px; align-items: flex-end; flex-wrap: wrap; }
+.stat { display: flex; flex-direction: column; gap: 2px; }
+.stat .lbl { font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--muted); }
+.stat .val { font-family: var(--display); font-size: 22px; line-height: 1; font-variant-numeric: tabular-nums; }
+#streak.hot { color: var(--hull); }
+#toBoss.now { color: var(--danger); }
+#banner small { display: block; font-family: var(--body); font-weight: 700; font-size: clamp(16px, 3.5vw, 22px); color: var(--star); text-shadow: none; margin-top: 6px; }
+.shields { display: flex; gap: 6px; padding-bottom: 2px; }
+.shields i {
+  width: 16px; height: 18px; display: block;
+  background: var(--laser);
+  clip-path: polygon(50% 0, 100% 20%, 92% 70%, 50% 100%, 8% 70%, 0 20%);
+}
+.shields i.gone { background: rgba(150, 160, 255, 0.2); }
+.hud-btns { display: flex; gap: 8px; pointer-events: auto; }
+.icon-btn {
+  font-family: var(--body); font-weight: 700; font-size: 13px;
+  color: var(--star); background: rgba(20, 24, 70, 0.7);
+  border: 1px solid var(--line); border-radius: 10px;
+  padding: 8px 12px; cursor: pointer;
+}
+.icon-btn:hover { border-color: var(--laser); }
+.icon-btn:focus-visible, .btn:focus-visible, .chip input:focus-visible + span, .key:focus-visible {
+  outline: 3px solid var(--laser); outline-offset: 2px;
+}
+
+/* Level banner */
+#banner {
+  position: absolute; left: 0; right: 0; top: 30%;
+  text-align: center; font-family: var(--display); font-size: clamp(34px, 8vw, 64px);
+  color: var(--hull); text-shadow: 0 0 24px rgba(255, 201, 74, 0.5);
+  pointer-events: none; opacity: 0;
+}
+#banner.show { animation: banner 1.6s ease-out; }
+@keyframes banner {
+  0% { opacity: 0; transform: scale(0.6); }
+  15% { opacity: 1; transform: scale(1.08); }
+  25% { transform: scale(1); }
+  75% { opacity: 1; }
+  100% { opacity: 0; transform: translateY(-20px); }
+}
+
+/* Keyboard */
+#keys {
+  position: absolute; left: 0; right: 0; bottom: 0;
+  display: flex; flex-direction: column; align-items: center; gap: 5px;
+  padding-block: 10px calc(12px + env(safe-area-inset-bottom, 0px));
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  background: linear-gradient(to top, rgba(8, 10, 34, 0.95) 60%, rgba(8, 10, 34, 0));
+}
+.kb-row { display: flex; gap: 4px; }
+.kb-row:nth-child(2) { margin-left: 2.2%; }
+.kb-row:nth-child(3) { margin-left: 6%; }
+#keys.syms .kb-row { margin-left: 0; }
+@media (max-width: 560px) { .kb-row:nth-child(n) { margin-left: 0; } }
+.key {
+  --f: var(--f3);
+  width: clamp(24px, calc((100vw - 32px - 44px) / 11), 46px);
+  height: clamp(34px, 9vw, 44px);
+  font-family: var(--body); font-weight: 700; font-size: clamp(14px, 3.6vw, 18px);
+  color: var(--star);
+  background: rgba(30, 34, 90, 0.85);
+  border: 1px solid var(--line); border-bottom: 4px solid var(--f);
+  border-radius: 8px; cursor: pointer; padding: 0; position: relative;
+  transition: transform 0.08s, background 0.15s, box-shadow 0.15s;
+}
+.key.off { opacity: 0.28; }
+.key.home::after {
+  content: ""; position: absolute; left: 50%; bottom: 5px; width: 10px; height: 2px;
+  margin-left: -5px; background: currentColor; border-radius: 2px; opacity: 0.7;
+}
+.key.live { background: rgba(95, 242, 255, 0.22); box-shadow: 0 0 12px rgba(95, 242, 255, 0.45); opacity: 1; }
+.key.urgent { background: rgba(255, 140, 60, 0.4); box-shadow: 0 0 14px rgba(255, 140, 60, 0.7); opacity: 1; }
+.key.space { width: clamp(150px, 46vw, 300px); font-size: 13px; letter-spacing: 0.12em; text-transform: uppercase; }
+#keys:not(.syms) .sym { display: none; }
+#keys:not(.spacebar) .space { display: none; }
+#keys:not(.caps) .shiftkey { display: none; }
+.key.shiftkey { width: clamp(64px, 16vw, 96px); font-size: 13px; letter-spacing: 0.08em; text-transform: uppercase; }
+.key.shiftkey.armed { background: var(--hull); color: var(--void); }
+.key.ok { background: var(--good); color: var(--void); transform: translateY(2px); }
+.key.bad { background: var(--danger); color: var(--void); transform: translateX(2px); }
+
+/* Overlays */
+.overlay {
+  position: absolute; inset: 0; display: grid; place-items: center; overflow-y: auto;
+  padding-block: 24px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  background: rgba(5, 6, 22, 0.55);
+  backdrop-filter: blur(2px);
+}
+.card {
+  width: min(560px, 100%);
+  background: var(--panel); border: 1px solid var(--line); border-radius: 22px;
+  padding: clamp(20px, 4vw, 32px);
+  display: flex; flex-direction: column; gap: 18px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+}
+.logo {
+  font-family: var(--display); font-size: clamp(34px, 9vw, 56px); line-height: 0.95;
+  margin: 0; text-wrap: balance; color: var(--hull);
+}
+.logo span { color: var(--laser); display: block; }
+.card h2 { font-family: var(--display); font-size: clamp(28px, 7vw, 40px); margin: 0; line-height: 1; text-wrap: balance; }
+.lede { margin: 0; color: var(--muted); line-height: 1.5; max-width: 46ch; }
+fieldset { border: 0; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+legend { font-size: 12px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--muted); padding: 0; margin-bottom: 8px; }
+.chips { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.chips.three { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.chip { position: relative; cursor: pointer; min-width: 0; }
+.chip input { position: absolute; opacity: 0; pointer-events: none; }
+.chip > span {
+  display: flex; flex-direction: column; gap: 3px; height: 100%;
+  padding: 10px 12px; border-radius: 12px;
+  border: 2px solid var(--line); background: rgba(30, 34, 90, 0.5);
+}
+.chip b { font-size: 15px; }
+.chip small { font-size: 12px; color: var(--muted); letter-spacing: 0.08em; overflow-wrap: anywhere; }
+.chip input:checked + span { border-color: var(--laser); background: rgba(95, 242, 255, 0.12); }
+.chip.toggle { grid-column: auto; }
+.chip.toggle > span { flex-direction: row; align-items: center; gap: 12px; }
+.chip.toggle .box {
+  flex: none; width: 22px; height: 22px; border-radius: 6px; border: 2px solid var(--line);
+  display: grid; place-items: center; font-size: 14px; color: transparent;
+}
+.chip.toggle input:checked + span .box { background: var(--laser); border-color: var(--laser); color: var(--void); }
+.chip.toggle .txt { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.row { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+.btn {
+  font-family: var(--display); font-size: 20px; letter-spacing: 0.04em;
+  color: var(--void); background: var(--hull);
+  border: 0; border-radius: 14px; padding: 14px 26px; cursor: pointer;
+  box-shadow: 0 5px 0 #b8841a;
+  transition: transform 0.08s, box-shadow 0.08s;
+}
+.btn:active { transform: translateY(3px); box-shadow: 0 2px 0 #b8841a; }
+.btn.ghost { background: transparent; color: var(--star); box-shadow: none; border: 2px solid var(--line); font-size: 16px; }
+.hint { color: var(--muted); font-size: 13px; }
+.best { font-size: 14px; color: var(--muted); }
+.best b { color: var(--hull); font-variant-numeric: tabular-nums; }
+.results { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px; }
+.result { background: rgba(30, 34, 90, 0.5); border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; }
+.result .lbl { font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--muted); }
+.result .val { font-family: var(--display); font-size: 26px; font-variant-numeric: tabular-nums; }
+.practice { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.practice .k {
+  font-weight: 700; font-size: 18px; min-width: 38px; padding-inline: 8px; height: 38px; display: grid; place-items: center;
+  border-radius: 8px; background: rgba(30, 34, 90, 0.85); border: 1px solid var(--line); border-bottom: 4px solid var(--f, var(--f3));
+}
+.newBest { color: var(--good); font-weight: 700; margin: 0; }
+.win { color: var(--hull); }
+.stars { display: flex; gap: 8px; font-size: 48px; line-height: 1; color: var(--hull); text-shadow: 0 0 18px rgba(255, 201, 74, 0.5); }
+.stars .dim { color: rgba(150, 160, 255, 0.25); text-shadow: none; }
+#wStarNote { margin: -8px 0 0; }
+.card p.hint { margin: 0; }
+
+@media (max-height: 560px) {
+  .card { gap: 12px; }
+  .logo { font-size: 32px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  #banner.show { animation-duration: 1.2s; }
+  .key, .btn { transition: none; }
+}
+</style>
+</head>
+<body>
+<div id="app">
+  <canvas id="game" aria-label="Space game: type the letter on an asteroid to destroy it"></canvas>
+
+  <div class="hud" id="hud">
+    <div class="stats">
+      <div class="stat"><span class="lbl">WPM</span><span class="val" id="wpm">–</span></div>
+      <div class="stat"><span class="lbl">Score</span><span class="val" id="score">0</span></div>
+      <div class="stat"><span class="lbl">Level</span><span class="val" id="level">1</span></div>
+      <div class="stat"><span class="lbl" id="toBossLbl">Boss</span><span class="val" id="toBoss">12 left</span></div>
+      <div class="stat"><span class="lbl">Streak</span><span class="val" id="streak">0</span></div>
+      <div class="stat"><span class="lbl">Shields</span><span class="shields" id="shields"><i></i><i></i><i></i></span></div>
+    </div>
+    <div class="hud-btns">
+      <button class="icon-btn" id="soundBtn" type="button" aria-pressed="true">Sound: On</button>
+      <button class="icon-btn" id="pauseBtn" type="button">Pause</button>
+    </div>
+  </div>
+
+  <div id="banner" aria-live="polite"></div>
+
+  <div id="keys" aria-label="On-screen keyboard"></div>
+
+  <div class="overlay" id="menu">
+    <div class="card">
+      <h1 class="logo">Starship <span>Typer</span></h1>
+      <p class="lede">Asteroids are flying at your ship! Type what's written on each one to blast it before it hits you. Each of the 10 levels ends with a boss ship: spell its word to beat it, but every wrong key makes it charge closer! Wrong keys also cost points. On Medium and Hard, fiery comets streak in fast: blast them quickly for double points. Watch for Mega bosses on levels 3, 6 and 9, and the Ultra boss waiting on level 10.</p>
+      <fieldset>
+        <legend>What do you want to practice?</legend>
+        <div class="chips">
+          <label class="chip"><input type="radio" name="lesson" id="l-home" value="home"><span><b>Home row</b><small>A S D F G H J K L</small></span></label>
+          <label class="chip"><input type="radio" name="lesson" id="l-top" value="top"><span><b>Top row</b><small>Q W E R T Y U I O P</small></span></label>
+          <label class="chip"><input type="radio" name="lesson" id="l-bottom" value="bottom"><span><b>Bottom row</b><small>Z X C V B N M</small></span></label>
+          <label class="chip"><input type="radio" name="lesson" id="l-all" value="all"><span><b>All letters</b><small>A to Z · bonus points</small></span></label>
+          <label class="chip toggle"><input type="checkbox" id="symbolsToggle"><span><span class="box" aria-hidden="true">✓</span><span class="txt"><b>Plus special characters</b><small>; , . ' / - ! ? mixed in · extra points</small></span></span></label>
+          <label class="chip toggle"><input type="checkbox" id="capsToggle"><span><span class="box" aria-hidden="true">✓</span><span class="txt"><b>Plus capital letters</b><small>Hold Shift for capitals · extra points</small></span></span></label>
+        </div>
+      </fieldset>
+      <fieldset>
+        <legend>Speed</legend>
+        <div class="chips three">
+          <label class="chip"><input type="radio" name="speed" id="s-cadet" value="cadet"><span><b>Cadet</b><small>Slow</small></span></label>
+          <label class="chip"><input type="radio" name="speed" id="s-pilot" value="pilot"><span><b>Pilot</b><small>Medium</small></span></label>
+          <label class="chip"><input type="radio" name="speed" id="s-ace" value="ace"><span><b>Ace</b><small>Fast</small></span></label>
+        </div>
+      </fieldset>
+      <fieldset>
+        <legend>Challenge</legend>
+        <div class="chips">
+          <label class="chip"><input type="radio" name="difficulty" id="d-easy" value="easy"><span><b>Easy</b><small>Single letters</small></span></label>
+          <label class="chip"><input type="radio" name="difficulty" id="d-medium" value="medium"><span><b>Medium</b><small>Letter groups, comets, longer boss words</small></span></label>
+          <label class="chip"><input type="radio" name="difficulty" id="d-hard" value="hard"><span><b>Hard</b><small>Words, more comets, boss sentences</small></span></label>
+          <label class="chip"><input type="radio" name="difficulty" id="d-ludicrous" value="ludicrous"><span><b>Ludicrous</b><small>Gibberish mode: random jumbles, comet storms, silly worlds</small></span></label>
+        </div>
+      </fieldset>
+      <div class="row">
+        <button class="btn" id="startBtn" type="button">Launch</button>
+        <span class="hint">or press Enter</span>
+      </div>
+      <div class="best" id="menuBest"></div>
+    </div>
+  </div>
+
+  <div class="overlay" id="pause" hidden>
+    <div class="card">
+      <h2>Paused</h2>
+      <p class="lede">Take a breather. Your ship is waiting.</p>
+      <div class="row">
+        <button class="btn" id="resumeBtn" type="button">Resume</button>
+        <button class="btn ghost" id="quitBtn" type="button">Main menu</button>
+      </div>
+      <span class="hint">Press Esc to resume</span>
+    </div>
+  </div>
+
+  <div class="overlay" id="over" hidden>
+    <div class="card">
+      <h2>Ship down!</h2>
+      <p id="rNewBest" class="newBest" hidden>New best score!</p>
+      <div class="results">
+        <div class="result"><div class="lbl">Score</div><div class="val" id="rScore">0</div></div>
+        <div class="result"><div class="lbl">Best</div><div class="val" id="rBest">0</div></div>
+        <div class="result"><div class="lbl">Accuracy</div><div class="val" id="rAcc">0%</div></div>
+        <div class="result"><div class="lbl">Words / min</div><div class="val" id="rLpm">0</div></div>
+        <div class="result"><div class="lbl">Level reached</div><div class="val" id="rLevel">1</div></div>
+        <div class="result"><div class="lbl">Bosses beaten</div><div class="val" id="rBosses">0</div></div>
+      </div>
+      <div class="practice" id="rPractice"></div>
+      <div class="row">
+        <button class="btn" id="againBtn" type="button">Play again</button>
+        <button class="btn ghost" id="menuBtn" type="button">Main menu</button>
+      </div>
+      <span class="hint">Press Enter to play again</span>
+    </div>
+  </div>
+
+  <div class="overlay" id="won" hidden>
+    <div class="card">
+      <h2 class="win">Galaxy saved!</h2>
+      <p class="lede">You beat all 10 bosses, including 3 Mega bosses and the Ultra boss. Amazing typing, pilot!</p>
+      <div class="stars" id="wStars" role="img"></div>
+      <p class="hint" id="wStarNote"></p>
+      <p id="wNewBest" class="newBest" hidden>New best score!</p>
+      <div class="results">
+        <div class="result"><div class="lbl">Score</div><div class="val" id="wScore">0</div></div>
+        <div class="result"><div class="lbl">Best</div><div class="val" id="wBest">0</div></div>
+        <div class="result"><div class="lbl">Accuracy</div><div class="val" id="wAcc">0%</div></div>
+        <div class="result"><div class="lbl">Words / min</div><div class="val" id="wLpm">0</div></div>
+      </div>
+      <div class="practice" id="wPractice"></div>
+      <div class="row">
+        <button class="btn" id="wAgainBtn" type="button">Play again</button>
+        <button class="btn ghost" id="wMenuBtn" type="button">Main menu</button>
+      </div>
+      <span class="hint">Press Enter to play again</span>
+    </div>
+  </div>
+</div>
+
+<script>
+(() => {
+  const $ = (s) => document.querySelector(s);
+  const cv = $("#game"), ctx = cv.getContext("2d");
+  const reduceMotion = matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+  const LESSONS = {
+    home: "asdfghjkl",
+    top: "qwertyuiop",
+    bottom: "zxcvbnm",
+    all: "abcdefghijklmnopqrstuvwxyz",
+  };
+  const SPEEDS = {
+    cadet: { base: 32, grow: 3, gap: 3.2 },
+    pilot: { base: 46, grow: 4, gap: 2.6 },
+    ace:   { base: 62, grow: 5, gap: 2.0 },
+  };
+  // Boss words use only letters from the chosen lesson.
+  // The bottom row has no vowels, so its bosses mix in home-row letters.
+  const BOSS_WORDS = {
+    home: ["add", "ask", "sad", "dad", "gas", "has", "all", "lad", "ash", "fall", "hall", "half", "flag", "dash", "glad", "gala", "saga", "glass", "flash", "salad", "shall", "flask", "salsa", "alfalfa", "alas", "fads", "gash", "lash"],
+    top: ["toy", "pet", "pie", "you", "our", "top", "wet", "eye", "tie", "rope", "type", "quit", "trip", "tour", "pour", "tree", "yoyo", "quiet", "tower", "power", "write", "otter", "quote", "route", "puppy", "pretty", "poetry", "property", "yet", "toe", "pot", "tip", "poet", "ripe", "true", "tire"],
+    bottom: ["cab", "van", "man", "jam", "bad", "mad", "sax", "cash", "calm", "clam", "band", "jazz", "sand", "lamb", "hand", "land", "balm", "flax", "snack", "black", "banana", "bananas", "can", "ham", "jab", "bang", "scan", "clan", "slam", "snag"],
+    all: ["sun", "sky", "zoom", "star", "moon", "mars", "beam", "nova", "comet", "orbit", "alien", "laser", "pilot", "space", "venus", "robot", "rover", "lunar", "solar", "rocket", "planet", "meteor", "shield", "saturn", "galaxy", "crater", "jupiter", "gravity", "astronaut", "jet", "fuel", "crew", "radar", "pluto", "earth", "hatch", "warp"],
+  };
+  // Medium bosses: longer words.
+  const BOSS_WORDS_MEDIUM = {
+    home: ["flash", "glass", "salad", "shall", "flask", "salsa", "halls", "falls", "flags", "slash", "galas", "sagas", "flasks", "salads", "salsas", "alfalfa"],
+    top: ["power", "quiet", "write", "otter", "tower", "pretty", "poetry", "report", "outwit", "trooper", "pottery", "tripwire", "property", "prototype", "territory", "repertoire", "typewriter", "puppet", "pepper", "writer", "uproot", "equip", "rewrite", "tiptoe", "tutor", "outpour", "turret"],
+    bottom: ["snack", "black", "clams", "bands", "lambs", "hands", "canvas", "jackal", "cabana", "banana", "snacks", "jackals", "cabanas", "bananas", "handbag", "sandbag", "backhand", "mammal", "mammals", "llama", "llamas", "almanac", "flank", "blank"],
+    all: ["rocket", "planet", "meteor", "shield", "saturn", "galaxy", "jupiter", "gravity", "neptune", "eclipse", "asteroid", "universe", "astronaut", "telescope", "spaceship", "satellite", "spacesuit", "countdown", "meteorite", "supernova", "astronomy", "starlight", "constellation", "cosmonaut", "rocketship", "moonwalk", "starship", "launchpad", "nebula", "mercury", "meteorites"],
+  };
+  // Hard bosses: phrases (tier 0), sentences (tier 1), longer sentences with punctuation (tier 2).
+  // Letters stay inside the lesson; punctuation can be anything.
+  const BOSS_SENTENCES = {
+    home: [
+      ["a sad lad", "dad has gas", "ask dad", "half a salad", "a flag falls", "a glad lad", "a glass flask",
+       "salsa salad", "a gala hall", "add a dash", "a sad saga", "flash a flag", "dad had a salad", "a half flask"],
+      ["dad has a flask.", "a lad asks dad.", "all glass falls!", "shall dad ask?", "a sad lass sags.", "a glad lad has salsa.",
+       "dad adds a dash.", "has a lad had a salad?", "all flags fall!", "a lass had a gala.", "shall a lad add salsa?", "a sad saga, alas."],
+      ["dad's salsa? alas, all gas!", "a lad's flag falls; dash!", "ask dad, shall a lass dash?", "alas, dad's flask falls!",
+       "a lad's glass flask falls; alas!", "ha! a glad lad's salad has salsa.", "alas, dad's gala hall has a gash!",
+       "dash, lads! a flash flags all halls!", "shall dad add salsa? ha, alas!", "flash! all lads dash; alas, a gash!", "dad, a glad lad has a salad; ha!", "salsa, salad, alfalfa; dad has all!"],
+    ],
+    top: [
+      ["try it", "wet pie", "your toy", "put it up", "type quiet", "pretty tree", "quiet otter", "pour it out",
+       "wet puppy", "pot pie", "your poetry", "eerie tower", "top it up", "ripe pepper"],
+      ["write it out.", "you were quiet.", "put your toy up!", "we wrote it out.", "pretty poetry!", "write your poetry.",
+       "pretty puppy, quiet!", "your otter tore it up!", "try to write it out.", "we wrote poetry too.", "pour it out, otter!", "you quit? write it!"],
+      ["you, too, were quiet; wow!", "you're it; we wrote it out!", "yo, pretty poet; wow!", "type, type, type; you're pro!",
+       "quiet, puppy! your otter tore it up!", "yo, otter! we wrote your poetry; wow!", "pour it, try it, eye it; yup, ripe!",
+       "upper tower, otter; we're up, too!", "you're witty; we wrote poetry, too!", "yup, quiet otter; your pretty tree? ripe!", "you're pretty, puppy; we're quiet, too!", "write, rewrite, retype; you're top!"],
+    ],
+    bottom: [
+      ["a black cab", "jazz band", "calm clams", "a snack bag", "a calm lamb", "jazz hands", "black sand",
+       "a band can jam", "flax and balm", "a man and a van", "a jackal's snack", "a llama band", "a handbag", "jazz jams", "a calm mammal", "max and a llama"],
+      ["a man has a snack.", "can jazz calm a man?", "a clam sank, alas!", "a black cab hangs back.", "a lamb has a snack.",
+       "a jackal has a black bag!", "max has a sax.", "a man can jam a sax!", "calm hands, man!", "black sand had a clam.", "a llama has a handbag.", "can a mammal jam?", "a sandbag! dash, man!", "zag, man, zag!"],
+      ["a man's black van, alas, can sag!", "bananas, snacks, jam; cab's back!", "a calm cab; a black van; bang!",
+       "max, a calm man, can jam a jazz band!", "a lamb, a jackal, a clam; a band!", "bang, bang! jazz hands, a calm band!",
+       "flax, balm, jam; a man's snack bag!", "a llama and a mammal can jam!", "max's handbag has a snack; ha!", "a backhand, a slam, a jazz jam!", "llamas, lambs and jackals; a band!"],
+    ],
+    all: [
+      ["blast off", "fire lasers", "go faster", "hold on tight", "save the stars", "launch the rocket", "zoom past mars",
+       "catch a comet", "count the stars", "full speed ahead", "open the hatch", "land on the moon", "shields up", "wave to the aliens"],
+      ["fire the lasers now!", "the comet is coming.", "where is the moon?", "we can save the galaxy.", "hold on, pilot!",
+       "the stars are bright tonight.", "can you see saturn's rings?", "our rocket is ready!", "aliens love to dance!",
+       "is that a black hole?", "my robot can fly.", "jupiter is the biggest planet.", "beep boop, says the robot.", "the sun is a star!", "the rocket needs more fuel.", "look, a shooting star!", "we found a new planet!", "the crew is hungry."],
+      ["hold steady, pilot; the galaxy needs you!", "the aliens are coming, so type fast!", "don't stop now; the ultra boss is near!",
+       "we're almost home, captain; keep typing!", "quick, pilot; steer left, then dodge the comet!",
+       "the robots are friendly, but the asteroids are not!", "three, two, one; blast off to the stars!",
+       "mars is red, the sky is dark, and we are brave!", "captain's log; the aliens sent cookies, not lasers!",
+       "hold on tight, crew; the black hole is pulling us in!", "watch out! a meteor shower is heading our way!", "great typing, pilot! the galaxy is safe, for now.", "three moons, two suns, and one tiny rocket; let's go!", "if you see a comet, make a wish, then type faster!", "beep, boop, bop; the robot crew says hello!"],
+    ],
+  };
+  const PUNCT = [";", ",", ".", "'", "/", "-"]; // symbols that appear on Hard asteroids
+  const DIFFICULTIES = ["easy", "medium", "hard", "ludicrous"];
+  // Special characters are a practice add-on; sentence-style bosses (Hard, Ludicrous) need the space bar.
+  const symbolsOn = () => !!settings.symbols;
+  const sentenceMode = () => settings.difficulty === "hard" || settings.difficulty === "ludicrous";
+  const SYMS = [";", ",", ".", "'", "/", "-", "!", "?"];
+  const isLudicrous = () => settings.difficulty === "ludicrous";
+  const BOSS_PACE = { cadet: 3.2, pilot: 2.4, ace: 1.7 }; // seconds allowed per letter
+  const ROCKS_PER_LEVEL = 12;
+  const MAX_LEVEL = 10;
+  const MISS_PENALTY = { rock: 5, boss: 10 }; // points lost per wrong key (score never goes below 0)
+  // "All letters" is harder, so each hit is worth more and the streak multiplier climbs faster and higher.
+  const SCORING = {
+    normal: { points: 10, every: 5, maxMult: 5 },
+    all:    { points: 10, every: 3, maxMult: 8 },
+  };
+  // Every point earned is scaled by the chosen keys, speed and challenge.
+  const POINT_MULT = {
+    lesson: { home: 1, top: 1.1, bottom: 1.2, all: 1.5 },
+    speed: { cadet: 1, pilot: 1.25, ace: 1.5 },
+    difficulty: { easy: 1, medium: 1.5, hard: 2, ludicrous: 3 },
+  };
+  POINT_MULT.symbols = 1.3; // "plus special characters" — All letters + symbols is the top-scoring practice set
+  POINT_MULT.caps = 1.2; // "plus capital letters"
+  const settingsMult = () => POINT_MULT.lesson[settings.lesson] * (settings.symbols ? POINT_MULT.symbols : 1) * (settings.caps ? POINT_MULT.caps : 1) *
+    POINT_MULT.speed[settings.speed] * POINT_MULT.difficulty[settings.difficulty];
+  const award = (base, mult) => Math.round(base * mult * settingsMult());
+  // Fast "comet" letters that streak at the ship on Medium and Hard.
+  const COMETS = {
+    medium: { gap: [11, 17], max: 1, fromLevel: 2, speedUp: 1 },
+    hard:   { gap: [6, 10],  max: 2, fromLevel: 1, speedUp: 0.85 },
+    ludicrous: { gap: [3.5, 6.5], max: 3, fromLevel: 1, speedUp: 0.75 },
+  };
+  const COMET_TIME = { cadet: 3.6, pilot: 2.9, ace: 2.3 }; // seconds from launch to impact
+  const COMET_WARN = 1.8; // seconds of warning before it launches
+  // Spoken names for symbols, shown under comets so small marks are easy to recognize.
+  const SYM_NAMES = { ";": "semicolon", ",": "comma", ".": "period", "'": "apostrophe", "/": "slash", "-": "dash", "!": "exclamation", "?": "question" };
+  const charTag = (c) => SYM_NAMES[c] || (/[A-Z]/.test(c) && settings.caps ? "capital " + c : "");
+  const scoring = () => SCORING[settings.lesson === "all" ? "all" : "normal"];
+  const streakMult = (streak) => { const s = scoring(); return Math.min(s.maxMult, 1 + Math.floor(streak / s.every)); };
+
+  // One biome per level; the background changes after each boss kill.
+  const BIOMES = [
+    { name: "Deep Space",      bg: "#080a22", n1: [90, 50, 170, 0.32],  n2: [30, 120, 170, 0.22], star: "238,240,255", rockHue: 268, rockSat: 22, drift: 10,  feature: null },
+    { name: "Nebula Bloom",    bg: "#14061f", n1: [230, 60, 160, 0.34], n2: [120, 60, 220, 0.28], star: "255,225,245", rockHue: 320, rockSat: 24, drift: 10,  feature: "bloom" },
+    { name: "Ice Field",       bg: "#06142a", n1: [120, 200, 255, 0.26], n2: [200, 240, 255, 0.14], star: "225,245,255", rockHue: 200, rockSat: 34, drift: 36, feature: "moon" },
+    { name: "Volcanic Belt",   bg: "#1a0706", n1: [230, 80, 30, 0.32],  n2: [255, 170, 40, 0.18], star: "255,180,120", rockHue: 14,  rockSat: 40, drift: -28, feature: "lava" },
+    { name: "Emerald Giant",   bg: "#04140f", n1: [40, 200, 130, 0.24], n2: [20, 120, 160, 0.2],  star: "220,255,235", rockHue: 150, rockSat: 22, drift: 10,  feature: "planet" },
+    { name: "Crystal Reef",    bg: "#071420", n1: [60, 220, 220, 0.24], n2: [170, 90, 255, 0.24], star: "230,255,255", rockHue: 186, rockSat: 30, drift: 12,  feature: "crystals" },
+    { name: "Solar Flare",     bg: "#170d02", n1: [255, 170, 30, 0.28], n2: [255, 90, 40, 0.2],   star: "255,240,200", rockHue: 34,  rockSat: 34, drift: 14,  feature: "sun" },
+    { name: "Ring World",      bg: "#0f0a1c", n1: [170, 120, 220, 0.26], n2: [240, 180, 120, 0.16], star: "245,235,255", rockHue: 28, rockSat: 20, drift: 10, feature: "rings" },
+    { name: "Black Hole",      bg: "#030308", n1: [60, 40, 120, 0.2],   n2: [255, 120, 40, 0.12], star: "220,220,255", rockHue: 240, rockSat: 12, drift: 6,   feature: "blackhole" },
+    { name: "Alien Homeworld", bg: "#0a1206", n1: [150, 230, 60, 0.22], n2: [230, 60, 200, 0.2],  star: "240,255,220", rockHue: 92,  rockSat: 30, drift: 10,  feature: "aurora" },
+  ];
+  // Ludicrous mode gets its own silly worlds.
+  const WHIMSY = [
+    { name: "Cotton Candy Cosmos",  bg: "#2a1640", n1: [255, 150, 210, 0.34], n2: [140, 200, 255, 0.3],  star: "255,230,250", rockHue: 320, rockSat: 55, drift: 8,   feature: "cotton" },
+    { name: "Cheese Moon",          bg: "#1d1a3a", n1: [255, 220, 90, 0.22],  n2: [120, 110, 255, 0.24], star: "255,245,200", rockHue: 46,  rockSat: 60, drift: 10,  feature: "cheese" },
+    { name: "Rainbow Ribbon",       bg: "#16123a", n1: [255, 120, 160, 0.22], n2: [100, 220, 255, 0.24], star: "255,255,255", rockHue: 200, rockSat: 55, drift: 12,  feature: "rainbow" },
+    { name: "Jellybean Belt",       bg: "#1b0f2e", n1: [255, 90, 140, 0.24],  n2: [90, 255, 170, 0.2],   star: "255,240,220", rockHue: 130, rockSat: 60, drift: 10,  feature: "jellybeans" },
+    { name: "Disco Nebula",         bg: "#120a26", n1: [255, 60, 200, 0.26],  n2: [60, 220, 255, 0.26],  star: "255,255,255", rockHue: 280, rockSat: 65, drift: 16,  feature: "disco" },
+    { name: "Polka Dot Void",       bg: "#22163d", n1: [255, 180, 120, 0.2],  n2: [160, 120, 255, 0.24], star: "255,240,255", rockHue: 20,  rockSat: 60, drift: 8,   feature: "polka" },
+    { name: "Bubble Bath Galaxy",   bg: "#0d1f3a", n1: [140, 230, 255, 0.28], n2: [255, 180, 240, 0.2],  star: "220,250,255", rockHue: 190, rockSat: 55, drift: -18, feature: "bubbles" },
+    { name: "Donut Planet",         bg: "#24122e", n1: [255, 150, 190, 0.26], n2: [255, 200, 120, 0.2],  star: "255,235,240", rockHue: 30,  rockSat: 50, drift: 10,  feature: "donut" },
+    { name: "Smiley Sun System",    bg: "#1f1530", n1: [255, 210, 80, 0.3],   n2: [255, 120, 160, 0.2],  star: "255,250,220", rockHue: 50,  rockSat: 60, drift: 12,  feature: "smiley" },
+    { name: "Kitty Constellation",  bg: "#140f30", n1: [200, 140, 255, 0.28], n2: [255, 160, 200, 0.24], star: "255,240,255", rockHue: 300, rockSat: 50, drift: 8,   feature: "kitty" },
+  ];
+  const biomes = () => (settings.difficulty === "ludicrous" ? WHIMSY : BIOMES);
+
+  const bossKind = (level) => (level >= MAX_LEVEL ? "ultra" : level % 3 === 0 ? "mega" : "normal");
+  const BOSS_INFO = {
+    normal: { words: 1, lunge: 0.12, perLetter: 25, perfect: 100, title: "Boss incoming!", sub: "Spell its word to beat it", label: "" },
+    mega:   { words: 2, lunge: 0.14, perLetter: 40, perfect: 200, title: "Mega boss!", sub: "Spell 2 words to beat it", label: "MEGA BOSS" },
+    ultra:  { words: 3, lunge: 0.15, perLetter: 60, perfect: 300, title: "Ultra boss!", sub: "Final battle: spell 3 words", label: "ULTRA BOSS" },
+  };
+  const BOSS_STYLE = {
+    normal: { scale: 1,    hull: ["#b48cff", "#6a3fc8", "#2e1a66"], rim: "#d9c7ff", dome: "125,255,176", light: "#ffc94a", label: "#d9c7ff" },
+    mega:   { scale: 1.35, hull: ["#ff8a8a", "#c42b3c", "#4d0a18"], rim: "#ffd0d0", dome: "255,201,74",  light: "#5ff2ff", label: "#ff9a9a" },
+    ultra:  { scale: 1.7,  hull: ["#ffe08a", "#9a6a10", "#2a1a04"], rim: "#fff0c0", dome: "255,93,115",  light: "#ff5d73", label: "#ffe08a" },
+  };
+  const ULTRA_CORES = ["255,93,115", "170,120,255", "95,242,255"]; // core changes color each phase
+  // Keys after the letters (and the whole last row) only show in Hard.
+  const ROWS = [
+    [..."qwertyuiop", "-"],
+    [..."asdfghjkl", ";", "'"],
+    [..."zxcvbnm", ",", ".", "/", "?"],
+    ["shift", "!", " "],
+  ];
+  const EXTRA_KEYS = new Set(["-", ";", "'", ",", ".", "/", "?", "!", " "]);
+  // Which finger presses each key: 0 pinky, 1 ring, 2 middle, 3 index (mirrored per hand), 4 thumb
+  const FINGER = { q:0,a:0,z:0, w:1,s:1,x:1, e:2,d:2,c:2, r:3,f:3,v:3,t:3,g:3,b:3,
+                   y:3,h:3,n:3,u:3,j:3,m:3, i:2,k:2, o:1,l:1, p:0,
+                   "-":0, ";":0, "'":0, ",":2, ".":1, "/":0, "?":0, "!":0, " ":4 };
+  const keyLabel = (c) => (c === " " ? "Space" : c === "shift" ? "Shift" : /[A-Z]/.test(c) ? "⇧" + c : c.toUpperCase());
+  // ---- Capital letters add-on: case is enforced only when it's switched on.
+  const capsOn = () => !!settings.caps;
+  const PROPER = new Set(["jupiter", "saturn", "mars", "venus", "neptune", "mercury", "pluto", "earth", "max"]);
+  const cap1 = (w) => w[0].toUpperCase() + w.slice(1);
+  const properCase = (s) => s.replace(/[a-z]+/g, (w) => (PROPER.has(w) ? cap1(w) : w));
+  const sentenceCase = (s) => properCase(s).replace(/(^|[.!?]\s+)([a-z])/g, (m, a, b) => a + b.toUpperCase());
+  const randomCase = (s, p) => [...s].map((c) => (/[a-z]/.test(c) && Math.random() < p ? c.toUpperCase() : c)).join("");
+  const wordCase = (w) => { w = properCase(w); return /^[a-z]/.test(w) && Math.random() < 0.4 ? cap1(w) : w; };
+  const lc = (c) => c.toLowerCase();
+
+  const store = {
+    get(k, d) { try { const v = localStorage.getItem(k); return v === null ? d : JSON.parse(v); } catch (e) { return d; } },
+    set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} },
+  };
+
+  const settings = Object.assign({ lesson: "home", speed: "cadet", difficulty: "easy", symbols: false, caps: false }, store.get("st-settings", {}));
+  if (!LESSONS[settings.lesson]) settings.lesson = "home";
+  if (!SPEEDS[settings.speed]) settings.speed = "cadet";
+  if (!DIFFICULTIES.includes(settings.difficulty)) settings.difficulty = "easy";
+  let muted = store.get("st-muted", false);
+  // Easy keeps the original key so earlier best scores still count.
+  const bestKey = () => `st-best-${settings.lesson}-${settings.speed}` + (settings.difficulty === "easy" ? "" : "-" + settings.difficulty) + (settings.symbols ? "-sym" : "") + (settings.caps ? "-cap" : "");
+
+  // ---------- Sound ----------
+  let AC = null;
+  function initAudio() {
+    if (!AC) { try { AC = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) { AC = null; } }
+    if (AC && AC.state === "suspended") AC.resume();
+  }
+  function tone(freq, dur, type, vol, slideTo) {
+    if (!AC || muted) return;
+    const t = AC.currentTime, o = AC.createOscillator(), g = AC.createGain();
+    o.type = type; o.frequency.setValueAtTime(freq, t);
+    if (slideTo) o.frequency.exponentialRampToValueAtTime(slideTo, t + dur);
+    g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    o.connect(g).connect(AC.destination); o.start(t); o.stop(t + dur + 0.02);
+  }
+  function noise(dur, vol, cutoff) {
+    if (!AC || muted) return;
+    const t = AC.currentTime, len = Math.floor(AC.sampleRate * dur);
+    const buf = AC.createBuffer(1, len, AC.sampleRate), d = buf.getChannelData(0);
+    for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * (1 - i / len);
+    const src = AC.createBufferSource(), f = AC.createBiquadFilter(), g = AC.createGain();
+    src.buffer = buf; f.type = "lowpass"; f.frequency.value = cutoff; g.gain.value = vol;
+    src.connect(f).connect(g).connect(AC.destination); src.start(t);
+  }
+  const sfx = {
+    laser: () => tone(1300, 0.14, "square", 0.04, 280),
+    boom: () => noise(0.35, 0.3, 1000),
+    miss: () => tone(170, 0.16, "triangle", 0.14, 110),
+    hit: () => { noise(0.6, 0.45, 380); tone(110, 0.45, "sine", 0.3, 40); },
+    level: () => [523, 659, 784, 1047].forEach((f, i) => setTimeout(() => tone(f, 0.2, "triangle", 0.09), i * 95)),
+    siren: () => [0, 1, 2].forEach((i) => setTimeout(() => tone(440, 0.34, "sawtooth", 0.05, 880), i * 380)),
+    growl: () => tone(95, 0.35, "sawtooth", 0.12, 55),
+    bigBoom: () => { noise(1.1, 0.55, 700); tone(160, 0.9, "sine", 0.3, 30); },
+    whoosh: () => { tone(900, 0.35, "sawtooth", 0.05, 200); noise(0.3, 0.12, 2500); },
+  };
+
+  // ---------- Keyboard UI ----------
+  const keyEls = {};
+  const keysWrap = $("#keys");
+  ROWS.forEach((row, ri) => {
+    const r = document.createElement("div"); r.className = "kb-row";
+    row.forEach((k) => {
+      const b = document.createElement("button");
+      b.type = "button"; b.className = "key"; b.textContent = keyLabel(k);
+      b.id = "key-" + k.charCodeAt(0); b.tabIndex = -1;
+      b.setAttribute("aria-label", k === " " ? "Space" : k);
+      b.style.setProperty("--f", `var(--f${FINGER[k] ?? 0})`);
+      if (k === "shift") b.classList.add("shiftkey");
+      if (k === "f" || k === "j") b.classList.add("home");
+      if (k !== " " && EXTRA_KEYS.has(k)) b.classList.add("sym");
+      if (k === " ") b.classList.add("space");
+      b.addEventListener("pointerdown", (e) => {
+        e.preventDefault(); initAudio();
+        if (k === "shift") { shiftArmed = !shiftArmed; paintKeyLabels(); return; }
+        let ch = k;
+        if (capsOn() && /[a-z]/.test(k) && shiftArmed) { ch = k.toUpperCase(); shiftArmed = false; paintKeyLabels(); }
+        handleLetter(ch);
+      });
+      r.appendChild(b); keyEls[k] = b;
+    });
+    keysWrap.appendChild(r);
+  });
+  // Tapping the on-screen Shift arms it for the next letter.
+  let shiftArmed = false;
+  function paintKeyLabels() {
+    for (const k in keyEls) {
+      if (k.length === 1 && /[a-z]/.test(k)) keyEls[k].textContent = capsOn() ? (shiftArmed ? k.toUpperCase() : k) : k.toUpperCase();
+    }
+    if (keyEls.shift) keyEls.shift.classList.toggle("armed", shiftArmed);
+  }
+  function refreshKeyLesson() {
+    const set = LESSONS[settings.lesson];
+    keysWrap.classList.toggle("syms", symbolsOn());
+    keysWrap.classList.toggle("spacebar", sentenceMode());
+    keysWrap.classList.toggle("caps", capsOn());
+    shiftArmed = false; paintKeyLabels();
+    for (const k in keyEls) keyEls[k].classList.toggle("off", !(set.includes(k) || (symbolsOn() && SYMS.includes(k)) || (k === " " && sentenceMode()) || (k === "shift" && capsOn())));
+    if (W) resize();
+  }
+  function updateLiveKeys() {
+    let live;
+    if (G && G.boss && G.phase === "boss") live = [G.boss.word[G.boss.idx]];
+    else if (G && G.lock) live = [G.lock.text[G.lock.typed]];
+    else live = G ? G.rocks.map((r) => r.text[0]) : [];
+    const urgentRaw = G && G.phase === "rocks" ? G.comets.map((c) => c.ch) : [];
+    const needShift = capsOn() && live.concat(urgentRaw).some((c) => /[A-Z]/.test(c));
+    live = new Set(live.map(lc));
+    if (needShift) live.add("shift");
+    const urgent = new Set(urgentRaw.map(lc));
+    for (const k in keyEls) {
+      keyEls[k].classList.toggle("live", live.has(k) && !urgent.has(k));
+      keyEls[k].classList.toggle("urgent", urgent.has(k));
+    }
+  }
+  const flashTimers = {};
+  function flashKey(k, cls) {
+    k = lc(k);
+    const el = keyEls[k]; if (!el) return;
+    el.classList.remove("ok", "bad"); el.classList.add(cls);
+    clearTimeout(flashTimers[k]);
+    flashTimers[k] = setTimeout(() => el.classList.remove(cls), 160);
+  }
+
+  // ---------- World ----------
+  let W = 0, H = 0, playH = 0, DPR = 1, scale = 1;
+  const ship = { x: 0, y: 0, angle: -Math.PI / 2, r: 22, wobble: 0 };
+  let stars = [], particles = [], lasers = [], texts = [], shake = 0;
+  let G = null;
+  let mode = "menu";
+  let biome = 0, prevBiome = 0, biomeFade = 1;
+  function setBiome(i) {
+    if (i === biome) return;
+    prevBiome = biome; biome = i; biomeFade = 0;
+  }
+
+  function resize() {
+    const rect = cv.getBoundingClientRect();
+    DPR = Math.min(2, window.devicePixelRatio || 1);
+    W = rect.width; H = rect.height;
+    cv.width = Math.round(W * DPR); cv.height = Math.round(H * DPR);
+    ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+    playH = H - keysWrap.getBoundingClientRect().height;
+    ship.x = W / 2;
+    ship.y = Math.max(140, 60 + (playH - 60) * 0.55);
+    scale = Math.min(1.25, Math.max(0.55, Math.hypot(W, playH) / 900));
+    makeStars();
+  }
+  function makeStars() {
+    const n = Math.round((W * H) / 2600);
+    stars = Array.from({ length: n }, () => ({
+      x: Math.random() * W, y: Math.random() * H, z: Math.random() * 0.9 + 0.1, tw: Math.random() * 6.28,
+    }));
+  }
+  const rockSize = () => Math.max(22, Math.min(34, W / 24));
+
+  function newGame() {
+    G = { score: 0, level: 1, hits: 0, misses: 0, streak: 0, bestStreak: 0, shields: 3,
+          rocks: [], t: 0, spawnT: 0.8, leaked: {}, dying: 0,
+          phase: "rocks", levelHits: 0, phaseT: 0, boss: null, bosses: 0, usedBoss: new Set(), winning: 0, lock: null, comets: [], cometT: 5, typeT: 0, wpmT: 0 };
+    particles = []; lasers = []; texts = [];
+    biome = prevBiome = 0; biomeFade = 1;
+    ship.angle = -Math.PI / 2;
+    updateHud(); updateLiveKeys();
+  }
+
+  const pick = (arr) => arr[(Math.random() * arr.length) | 0];
+  function letterGroup(keys, len) {
+    let s = "";
+    while (s.length < len) { const c = pick(keys); if (c !== s[s.length - 1]) s += c; }
+    return s;
+  }
+  // Gibberish mode (Ludicrous): random characters from the lesson's letters plus symbols.
+  function gibberish(len) {
+    const letters = [...LESSONS[settings.lesson]];
+    let s = "";
+    while (s.length < len) {
+      const c = symbolsOn() && Math.random() < 0.3 ? pick(SYMS) : pick(letters);
+      if (c !== s[s.length - 1]) s += c;
+    }
+    return s;
+  }
+  function gibPhrase(total) {
+    const parts = [];
+    let len = 0;
+    while (len < total) {
+      const n = Math.min(2 + ((Math.random() * 5) | 0), Math.max(2, total - len));
+      parts.push(gibberish(n)); len += n + 1;
+    }
+    return parts.join(" ");
+  }
+
+  // What's written on an asteroid depends on the Challenge setting (and the special-characters add-on).
+  function makeRockText() {
+    const t = baseRockText();
+    if (!capsOn()) return t;
+    if (t.length === 1) return /[a-z]/.test(t) && Math.random() < 0.4 ? t.toUpperCase() : t;
+    if (/^[a-z]+$/.test(t) && BOSS_WORDS[settings.lesson].includes(t)) return wordCase(t);
+    return randomCase(t, 0.3);
+  }
+  function baseRockText() {
+    const keys = [...LESSONS[settings.lesson]];
+    const lvl = G.level;
+    const sym = symbolsOn();
+    if (settings.difficulty === "easy") return sym && Math.random() < 0.25 ? pick(PUNCT) : pick(keys);
+    if (isLudicrous()) return gibberish(1 + ((Math.random() * Math.min(5, 2 + lvl / 2.5)) | 0));
+    if (settings.difficulty === "medium") {
+      if (Math.random() < Math.max(0.35, 0.6 - lvl * 0.03)) return pick(keys);
+      const g = letterGroup(keys, 2 + (Math.random() < Math.min(0.6, lvl * 0.07) ? 1 : 0));
+      if (sym && Math.random() < 0.35) return Math.random() < 0.5 ? g + pick(PUNCT) : pick(PUNCT) + g;
+      return g;
+    }
+    // hard
+    const roll = Math.random() * (sym ? 1 : 0.7);
+    if (roll < 0.2) return pick(keys);
+    if (roll < 0.45) return letterGroup(keys, 2 + ((Math.random() * Math.min(3, 1 + lvl / 4)) | 0));
+    if (roll < 0.7) {
+      const words = BOSS_WORDS[settings.lesson].filter((w) => w.length <= 5);
+      return pick(words);
+    }
+    const p = pick(PUNCT);
+    const r2 = Math.random();
+    if (r2 < 0.3) return p;
+    if (r2 < 0.7) return pick(keys) + p;
+    return pick(keys) + p + pick(keys);
+  }
+
+  function spawnRock() {
+    // Keep first characters unique so typing one picks a single asteroid.
+    const firsts = new Set(G.rocks.map((r) => lc(r.text[0])));
+    let text = makeRockText();
+    for (let tries = 0; tries < 15 && firsts.has(lc(text[0])); tries++) text = makeRockText();
+    const len = text.length;
+    const R = rockSize() * Math.min(2, 1 + 0.24 * (len - 1));
+    let x, y; const side = Math.random();
+    if (side < 0.5) { x = R + Math.random() * (W - 2 * R); y = -R * 0.4; }
+    else if (side < 0.75) { x = -R * 0.4; y = 70 + Math.random() * Math.max(10, playH * 0.6); }
+    else { x = W + R * 0.4; y = 70 + Math.random() * Math.max(10, playH * 0.6); }
+    const sp = SPEEDS[settings.speed];
+    const speed = (sp.base + sp.grow * (G.level - 1)) * (0.85 + Math.random() * 0.3) * scale / (1 + 0.18 * (len - 1));
+    const a = Math.atan2(ship.y - y, ship.x - x);
+    const n = 9 + ((Math.random() * 4) | 0), shape = [];
+    for (let i = 0; i < n; i++) shape.push(0.8 + Math.random() * 0.28);
+    const bi = biomes()[biome];
+    const hue = bi.rockHue + (Math.random() - 0.5) * 30, sat = bi.rockSat;
+    G.rocks.push({ x, y, vx: Math.cos(a) * speed, vy: Math.sin(a) * speed, r: R, text, typed: 0,
+                   rot: Math.random() * 6.28, vr: (Math.random() - 0.5) * 0.9, shape, hue, sat });
+    updateLiveKeys();
+  }
+
+  function burst(x, y, color, count, power) {
+    for (let i = 0; i < count; i++) {
+      const a = Math.random() * 6.28, s = (0.3 + Math.random()) * power;
+      const life = 0.4 + Math.random() * 0.6;
+      particles.push({ x, y, vx: Math.cos(a) * s, vy: Math.sin(a) * s, life, max: life,
+                       color, size: 1.5 + Math.random() * 3 });
+    }
+  }
+
+  function handleLetter(k) {
+    if (mode !== "play" || !G || G.dying) return;
+    if (G.phase === "boss") return bossLetter(k);
+    if (G.phase !== "rocks") return;
+    if (k === " ") return; // asteroids never need a space; ignore it without a penalty
+    if (G.lock && !G.rocks.includes(G.lock)) G.lock = null;
+    // A comet with this letter takes priority, unless it's the next letter of the locked asteroid.
+    const comet = G.comets.find((c) => c.ch === k);
+    if (comet && !(G.lock && G.lock.text[G.lock.typed] === k)) return shootComet(comet);
+    let r = G.lock;
+    if (!r) {
+      // Not locked yet: aim at the closest asteroid whose text starts with this key.
+      let bd = Infinity;
+      for (const rock of G.rocks) {
+        if (rock.text[0] !== k) continue;
+        const d = Math.hypot(rock.x - ship.x, rock.y - ship.y);
+        if (d < bd) { bd = d; r = rock; }
+      }
+    }
+    if (!r && capsOn()) {
+      // Right letter, wrong case? Find what they were aiming at so we can say "Shift".
+      r = G.rocks.find((rock) => lc(rock.text[0]) === lc(k)) || null;
+      const cm = G.comets.find((c) => lc(c.ch) === lc(k));
+      if (!r && cm) { missWithHint(k, cm.ch); return; }
+    }
+    if (!r || r.text[r.typed] !== k) {
+      if (r && capsOn() && lc(r.text[r.typed]) === lc(k)) { missWithHint(k, r.text[r.typed]); return; }
+      flashKey(k, "bad");
+      G.misses++; G.streak = 0; ship.wobble = 0.35; sfx.miss();
+      const lost = Math.min(G.score, MISS_PENALTY.rock);
+      G.score -= lost;
+      if (r) { const need = r.text[r.typed]; G.leaked[need] = (G.leaked[need] || 0) + 1; }
+      texts.push({ x: ship.x, y: ship.y - 46, s: keyLabel(k) + "?" + (lost ? "  -" + lost : ""), color: "#ff5d73", life: 0.9, max: 0.9 });
+      updateHud(); return;
+    }
+    flashKey(k, "ok");
+    r.typed++;
+    ship.angle = Math.atan2(r.y - ship.y, r.x - ship.x);
+    const nx = ship.x + Math.cos(ship.angle) * 24, ny = ship.y + Math.sin(ship.angle) * 24;
+    lasers.push({ x1: nx, y1: ny, x2: r.x, y2: r.y, life: 0.2, max: 0.2 });
+    G.hits++; G.streak++; G.bestStreak = Math.max(G.bestStreak, G.streak);
+    const mult = streakMult(G.streak);
+    const pts = award(scoring().points, mult);
+    G.score += pts;
+    sfx.laser();
+    if (r.typed < r.text.length) {
+      // Partly typed: stay locked on and chip the rock.
+      G.lock = r;
+      burst(r.x, r.y, `hsl(${r.hue},30%,70%)`, 6, 110);
+      updateHud(); updateLiveKeys();
+      return;
+    }
+    G.lock = null;
+    G.rocks.splice(G.rocks.indexOf(r), 1);
+    burst(r.x, r.y, `hsl(${r.hue},30%,70%)`, 22 + r.text.length * 4, 160);
+    burst(r.x, r.y, "#ffc94a", 12, 220);
+    texts.push({ x: r.x, y: r.y, s: "+" + pts, color: mult > 1 ? "#ffc94a" : "#eef0ff", life: 0.9, max: 0.9 });
+    sfx.boom();
+    G.levelHits++;
+    if (G.levelHits >= ROCKS_PER_LEVEL) startBossWarning();
+    else if (!G.rocks.length) G.spawnT = Math.min(G.spawnT, 0.5);
+    updateHud(); updateLiveKeys();
+  }
+
+  function missWithHint(k, need) {
+    flashKey(k, "bad");
+    G.misses++; G.streak = 0; ship.wobble = 0.35; sfx.miss();
+    const lost = Math.min(G.score, MISS_PENALTY.rock);
+    G.score -= lost;
+    G.leaked[need] = (G.leaked[need] || 0) + 1;
+    const hint = /[A-Z]/.test(need) ? "Hold Shift!" : "No Shift!";
+    texts.push({ x: ship.x, y: ship.y - 46, s: hint + (lost ? "  -" + lost : ""), color: "#ff5d73", life: 1, max: 1 });
+    updateHud();
+  }
+
+  function showBanner(main, sub) {
+    const b = $("#banner");
+    b.innerHTML = main + (sub ? `<small>${sub}</small>` : "");
+    b.classList.remove("show"); void b.offsetWidth; b.classList.add("show");
+  }
+
+  function levelUp() {
+    G.level = Math.min(MAX_LEVEL, G.level + 1);
+    setBiome(G.level - 1);
+    let sub = biomes()[G.level - 1].name;
+    if (G.level === MAX_LEVEL) { G.shields = 3; sub += " · Shields fully charged"; }
+    else if (G.level % 3 === 0 && G.shields < 3) { G.shields++; sub += " · Shield restored"; }
+    showBanner("Level " + G.level, sub);
+    sfx.level();
+  }
+
+  // ---------- Boss ----------
+  function startBossWarning() {
+    const kind = bossKind(G.level), info = BOSS_INFO[kind];
+    G.phase = "clearing";
+    G.phaseT = kind === "normal" ? 1.9 : 2.6;
+    G.rocks.forEach((r) => burst(r.x, r.y, `hsl(${r.hue},30%,70%)`, 14, 140));
+    if (G.rocks.length) sfx.boom();
+    G.rocks = []; G.lock = null;
+    G.comets.forEach((c) => burst(c.x, c.y, "#ff9a4a", 12, 140));
+    G.comets = []; G.cometT = 4;
+    const hardSub = { normal: "Type its message to beat it", mega: "Type 2 messages to beat it", ultra: "Final battle: type 3 messages" };
+    const ludSub = { normal: "Type the gibberish to beat it", mega: "Type 2 lines of gibberish", ultra: "Final battle: 3 lines of gibberish" };
+    showBanner(info.title, isLudicrous() ? ludSub[kind] : settings.difficulty === "hard" ? hardSub[kind] : info.sub);
+    sfx.siren();
+    if (kind !== "normal") { const game = G; setTimeout(() => { if (G === game) sfx.siren(); }, 1150); }
+    updateHud(); updateLiveKeys();
+  }
+
+  function hardTier(kind) {
+    if (kind === "ultra") return 2;
+    if (kind === "mega") return G.level <= 3 ? 1 : 2;
+    if (G.level <= 2) return 0;
+    if (G.level <= 5) return Math.random() < 0.5 ? 0 : 1;
+    return 1;
+  }
+
+  function pickWords(kind) {
+    const n = BOSS_INFO[kind].words;
+    let list, start, span;
+    if (isLudicrous()) {
+      const base = { normal: 7, mega: 11, ultra: 15 }[kind] + G.level;
+      const out = [];
+      for (let i = 0; i < n; i++) out.push(gibPhrase(base + ((Math.random() * 4) | 0)));
+      return capsOn() ? out.map((w) => randomCase(w, 0.3)) : out;
+    }
+    if (settings.difficulty === "hard") {
+      list = BOSS_SENTENCES[settings.lesson][hardTier(kind)].slice();
+      // Without the special-characters add-on, sentences are typed without punctuation.
+      if (!symbolsOn()) list = list.map((w) => w.replace(/n't/g, " not").replace(/'re/g, " are").replace(/let's/g, "let us")
+        .replace(/[^a-z ]/g, "").replace(/ +/g, " ").trim());
+      start = 0; span = list.length;
+    } else {
+      list = (settings.difficulty === "medium" ? BOSS_WORDS_MEDIUM : BOSS_WORDS)[settings.lesson]
+        .slice().sort((a, b) => a.length - b.length);
+      if (kind === "ultra") { span = Math.min(list.length, 8); start = list.length - span; }
+      else {
+        span = Math.min(list.length, kind === "mega" ? 7 : 6);
+        start = Math.max(0, Math.min(list.length - span, Math.floor((G.level - 1) * (list.length - span) / (MAX_LEVEL - 2))));
+      }
+    }
+    // Prefer choices not used yet this game and not seen in recent games.
+    const recent = store.get("st-recent-boss", []);
+    const windowList = list.slice(start, start + span);
+    const out = [];
+    const takeFrom = (cands) => {
+      const pool = cands.filter((w) => !out.includes(w));
+      while (out.length < n && pool.length) out.push(pool.splice((Math.random() * pool.length) | 0, 1)[0]);
+    };
+    takeFrom(windowList.filter((w) => !G.usedBoss.has(w) && !recent.includes(w)));
+    takeFrom(windowList.filter((w) => !G.usedBoss.has(w)));
+    takeFrom(list.filter((w) => !G.usedBoss.has(w)));
+    takeFrom(list);
+    while (out.length < n) out.push(pick(list));
+    out.forEach((w) => G.usedBoss.add(w));
+    store.set("st-recent-boss", recent.filter((w) => !out.includes(w)).concat(out).slice(-60));
+    if (!capsOn()) return out;
+    return out.map((w) => (settings.difficulty === "hard" ? sentenceCase(w) : wordCase(w)));
+  }
+
+  function wordTime(word, phase) {
+    // Sentences flow faster per character than isolated letters.
+    const pace = BOSS_PACE[settings.speed] * Math.max(0.6, Math.pow(0.95, G.level - 1)) * (settings.difficulty === "hard" ? 0.8 : 1);
+    return (3 + word.length * pace) * Math.pow(0.9, phase); // later words come in a bit faster
+  }
+
+  function spawnBoss() {
+    const kind = bossKind(G.level);
+    const words = pickWords(kind);
+    G.boss = { kind, words, wi: 0, word: words[0], idx: 0, p: 0, enter: 0, time: wordTime(words[0], 0),
+               lungeLeft: 0, flash: 0, hurt: 0, mistakes: 0, t: 0, letters: words.join("").length };
+    G.phase = "boss";
+    updateHud(); updateLiveKeys();
+  }
+
+  function bossDims(kind) {
+    const w = Math.min(W * 0.72, Math.max(90, Math.min(130, W * 0.3)) * BOSS_STYLE[kind].scale);
+    return { w, h: w * 0.3 };
+  }
+
+  function bossGeom() {
+    const { h } = bossDims(G.boss.kind);
+    const stopY = ship.y - h * 0.5 - 38;
+    const minStart = 60 + h * 1.15 + 62 + (G.boss.kind === "normal" ? 0 : 24) + (G.boss.extraH || 0);
+    const startY = Math.min(Math.max(minStart, 110), stopY - 60);
+    return { startY, stopY };
+  }
+
+  function bossPos() {
+    const b = G.boss, { startY, stopY } = bossGeom();
+    const base = startY + (stopY - startY) * Math.min(1, b.p);
+    const e = 1 - Math.pow(1 - b.enter, 3);
+    const off = bossDims(b.kind).h + 120;
+    const y = b.enter < 1 ? -off + (base + off) * e : base;
+    return { x: W / 2 + Math.sin(b.t * 1.3) * Math.min(40, W * 0.06), y };
+  }
+
+  function updateBoss(dt) {
+    const b = G.boss;
+    b.t += dt;
+    b.flash = Math.max(0, b.flash - dt);
+    b.hurt = Math.max(0, b.hurt - dt);
+    if (b.enter < 1) { b.enter = Math.min(1, b.enter + dt * 0.9); return; }
+    b.p += dt / b.time;
+    if (b.lungeLeft > 0) { const step = Math.min(b.lungeLeft, dt * 0.7); b.p += step; b.lungeLeft -= step; }
+    if (b.p >= 1) bossHitsShip();
+  }
+
+  function bossLetter(k) {
+    const b = G.boss;
+    if (!b || b.enter < 1) return;
+    const need = capsOn() ? b.word[b.idx] : lc(b.word[b.idx]);
+    if (k === need) {
+      flashKey(k, "ok");
+      const { x, y } = bossPos();
+      ship.angle = Math.atan2(y - ship.y, x - ship.x);
+      const nx = ship.x + Math.cos(ship.angle) * 24, ny = ship.y + Math.sin(ship.angle) * 24;
+      lasers.push({ x1: nx, y1: ny, x2: x, y2: y, life: 0.2, max: 0.2 });
+      burst(x, y, "#7dffb0", 10, 150);
+      b.idx++; b.hurt = 0.15;
+      G.hits++; G.streak++; G.bestStreak = Math.max(G.bestStreak, G.streak);
+      const mult = streakMult(G.streak);
+      G.score += award(scoring().points, mult);
+      sfx.laser();
+      if (b.idx >= b.word.length) {
+        if (b.wi < b.words.length - 1) nextBossWord(x, y);
+        else defeatBoss(x, y);
+      }
+    } else {
+      flashKey(k, "bad");
+      G.misses++; G.streak = 0; b.mistakes++;
+      G.leaked[need] = (G.leaked[need] || 0) + 1;
+      b.flash = 0.45;
+      b.lungeLeft += BOSS_INFO[b.kind].lunge; // penalty: the boss charges closer
+      ship.wobble = 0.35;
+      const lost = Math.min(G.score, MISS_PENALTY.boss);
+      G.score -= lost;
+      const oops = capsOn() && lc(k) === lc(need) ? (/[A-Z]/.test(need) ? "Hold Shift!" : "No Shift!") : "Oops!";
+      texts.push({ x: ship.x, y: ship.y - 46, s: oops + (lost ? "  -" + lost : ""), color: "#ff5d73", life: 0.9, max: 0.9 });
+      sfx.miss(); sfx.growl();
+    }
+    updateHud(); updateLiveKeys();
+  }
+
+  function nextBossWord(x, y) {
+    const b = G.boss, st = BOSS_STYLE[b.kind];
+    b.wi++; b.word = b.words[b.wi]; b.idx = 0;
+    b.time = wordTime(b.word, b.wi);
+    b.p = Math.max(0, b.p - 0.3); b.lungeLeft = 0; // knocked back by the blast
+    b.hurt = 0.4;
+    burst(x, y, "#ffffff", 30, 240);
+    burst(x, y, st.light, 24, 200);
+    shake = reduceMotion ? 0 : 8;
+    texts.push({ x, y: y + 10, s: "Next word!", color: "#ffc94a", life: 1.1, max: 1.1 });
+    sfx.boom(); sfx.growl();
+  }
+
+  function defeatBoss(x, y) {
+    const b = G.boss, info = BOSS_INFO[b.kind], st = BOSS_STYLE[b.kind];
+    const perfect = b.mistakes === 0;
+    const bonus = award(info.perLetter * b.letters + (perfect ? info.perfect : 0), 1);
+    G.score += bonus;
+    G.bosses++;
+    burst(x, y, st.hull[0], 60, 280);
+    burst(x, y, st.light, 40, 220);
+    burst(x, y, "#ffc94a", 30, 320);
+    shake = reduceMotion ? 0 : 10;
+    texts.push({ x, y: y + 10, s: "+" + bonus, color: "#ffc94a", life: 1.4, max: 1.4 });
+    if (perfect) texts.push({ x, y: y + 40, s: "Perfect!", color: "#7dffb0", life: 1.4, max: 1.4 });
+    sfx.bigBoom();
+    G.boss = null;
+    const game = G;
+    if (b.kind === "ultra") {
+      G.phase = "won";
+      G.winning = 3.2;
+      for (let i = 1; i <= 6; i++) {
+        setTimeout(() => {
+          if (G !== game) return;
+          const cols = ["#ffc94a", "#5ff2ff", "#ff8fc8", "#7dffb0"];
+          burst(W * (0.15 + Math.random() * 0.7), playH * (0.15 + Math.random() * 0.5), cols[i % 4], 50, 260);
+          sfx.boom();
+        }, i * 320);
+      }
+      setTimeout(() => { if (G === game) { showBanner("Galaxy saved!", "You beat the Ultra boss"); sfx.level(); } }, 600);
+      updateHud();
+      return;
+    }
+    G.phase = "rocks";
+    G.levelHits = 0;
+    G.spawnT = 2.4;
+    setTimeout(() => { if (G === game && !G.dying) { levelUp(); updateHud(); } }, 700);
+  }
+
+  function bossHitsShip() {
+    const b = G.boss;
+    G.leaked[b.word[b.idx]] = (G.leaked[b.word[b.idx]] || 0) + 1;
+    G.shields--; G.streak = 0;
+    b.p = 0; b.lungeLeft = 0; // knocked back, progress on the word is kept
+    burst(ship.x, ship.y - 30, "#ff5d73", 30, 220);
+    shake = reduceMotion ? 0 : 16;
+    sfx.hit();
+    if (G.shields <= 0) {
+      G.dying = 1.2;
+      burst(ship.x, ship.y, "#ffc94a", 60, 260);
+      burst(ship.x, ship.y, "#5ff2ff", 30, 180);
+    }
+    updateHud();
+  }
+
+  function damageShip(x, y, missed) {
+    G.leaked[missed] = (G.leaked[missed] || 0) + 1;
+    G.shields--; G.streak = 0;
+    burst(x, y, "#ff5d73", 26, 200);
+    shake = reduceMotion ? 0 : 14;
+    sfx.hit();
+    if (G.shields <= 0) {
+      G.dying = 1.2;
+      burst(ship.x, ship.y, "#ffc94a", 60, 260);
+      burst(ship.x, ship.y, "#5ff2ff", 30, 180);
+    }
+    updateHud(); updateLiveKeys();
+  }
+
+  function hitShip(r, i) {
+    G.rocks.splice(i, 1);
+    if (G.lock === r) G.lock = null;
+    damageShip(r.x, r.y, r.text[r.typed]);
+  }
+
+  // ---------- Comets: fast letters on Medium and Hard ----------
+  function cometChar() {
+    const busy = new Set(G.rocks.map((r) => lc(r.text[0])));
+    if (G.lock) busy.add(lc(G.lock.text[G.lock.typed]));
+    G.comets.forEach((c) => busy.add(lc(c.ch)));
+    let pool = [...LESSONS[settings.lesson]];
+    if (symbolsOn() && Math.random() < (isLudicrous() ? 0.4 : 0.25)) pool = SYMS.slice();
+    const free = pool.filter((c) => !busy.has(c));
+    if (!free.length) return null;
+    const c = pick(free);
+    return capsOn() && /[a-z]/.test(c) && Math.random() < 0.4 ? c.toUpperCase() : c;
+  }
+
+  function spawnComet() {
+    const ch = cometChar();
+    if (!ch) return;
+    let x, y; const side = Math.random();
+    if (side < 0.4) { x = 30 + Math.random() * (W - 60); y = -30; }
+    else if (side < 0.7) { x = -30; y = 80 + Math.random() * Math.max(10, playH * 0.5); }
+    else { x = W + 30; y = 80 + Math.random() * Math.max(10, playH * 0.5); }
+    const time = COMET_TIME[settings.speed] * COMETS[settings.difficulty].speedUp * Math.max(0.75, 1 - (G.level - 1) * 0.03);
+    const dx = ship.x - x, dy = ship.y - y, dist = Math.hypot(dx, dy);
+    G.comets.push({ ch, x, y, vx: (dx / dist) * dist / time, vy: (dy / dist) * dist / time, warn: COMET_WARN, warned: false });
+    updateLiveKeys();
+  }
+
+  function updateComets(dt) {
+    const cfg = COMETS[settings.difficulty];
+    if (!cfg) return;
+    if (G.level >= cfg.fromLevel) {
+      G.cometT -= dt;
+      if (G.cometT <= 0) {
+        if (G.comets.length < cfg.max) spawnComet();
+        G.cometT = cfg.gap[0] + Math.random() * (cfg.gap[1] - cfg.gap[0]);
+      }
+    }
+    for (let i = G.comets.length - 1; i >= 0; i--) {
+      const c = G.comets[i];
+      if (c.warn > 0) { c.warn -= dt; if (c.warn <= 0) sfx.whoosh(); continue; }
+      c.x += c.vx * dt; c.y += c.vy * dt;
+      if (Math.hypot(c.x - ship.x, c.y - ship.y) < ship.r + 10) {
+        G.comets.splice(i, 1);
+        damageShip(c.x, c.y, c.ch);
+      }
+    }
+  }
+
+  function shootComet(c) {
+    flashKey(c.ch, "ok");
+    G.comets.splice(G.comets.indexOf(c), 1);
+    const tx = c.warn > 0 ? Math.max(10, Math.min(W - 10, c.x)) : c.x;
+    const ty = c.warn > 0 ? Math.max(70, Math.min(playH - 10, c.y)) : c.y;
+    ship.angle = Math.atan2(ty - ship.y, tx - ship.x);
+    const nx = ship.x + Math.cos(ship.angle) * 24, ny = ship.y + Math.sin(ship.angle) * 24;
+    lasers.push({ x1: nx, y1: ny, x2: tx, y2: ty, life: 0.2, max: 0.2 });
+    G.hits++; G.streak++; G.bestStreak = Math.max(G.bestStreak, G.streak);
+    const pts = award(scoring().points * 2, streakMult(G.streak)); // comets are worth double
+    G.score += pts;
+    burst(tx, ty, "#ff9a4a", 24, 220);
+    burst(tx, ty, "#fff2c0", 10, 160);
+    texts.push({ x: tx, y: ty, s: "Comet! +" + pts, color: "#ffb35c", life: 1, max: 1 });
+    sfx.laser(); sfx.boom();
+    updateHud(); updateLiveKeys();
+  }
+
+  // Words per minute: correct keys / 5, over the time spent actually typing
+  // (not boss intros, level banners or pauses). Shows a dash for the first few seconds.
+  function currentWpm() {
+    if (!G || G.typeT < 8) return null;
+    return Math.round(G.hits / 5 / (G.typeT / 60));
+  }
+  function finalWpm() {
+    return G.typeT > 0 ? Math.round(G.hits / 5 / (Math.max(G.typeT, 10) / 60)) : 0;
+  }
+  function paintWpm() {
+    const v = currentWpm();
+    $("#wpm").textContent = v === null ? "–" : v;
+  }
+
+  function update(dt) {
+    G.t += dt;
+    if (!G.dying && (G.phase === "rocks" || (G.phase === "boss" && G.boss && G.boss.enter >= 1))) G.typeT += dt;
+    G.wpmT -= dt;
+    if (G.wpmT <= 0) { G.wpmT = 0.5; paintWpm(); }
+    if (G.dying) {
+      G.dying -= dt;
+      if (G.dying <= 0) { G.dying = 0; gameOver(); }
+      return;
+    }
+    if (G.phase === "won") { G.winning -= dt; if (G.winning <= 0) winGame(); return; }
+    if (G.phase === "clearing") { G.phaseT -= dt; if (G.phaseT <= 0) spawnBoss(); return; }
+    if (G.phase === "boss") { if (G.boss) updateBoss(dt); return; }
+    const sp = SPEEDS[settings.speed];
+    const maxRocks = Math.min(3 + G.level, 9);
+    G.spawnT -= dt;
+    if (G.spawnT <= 0 && G.rocks.length < maxRocks) {
+      spawnRock();
+      G.spawnT = Math.max(0.8, sp.gap - 0.18 * (G.level - 1)) * (0.8 + Math.random() * 0.4);
+    }
+    for (let i = G.rocks.length - 1; i >= 0; i--) {
+      const r = G.rocks[i];
+      r.x += r.vx * dt; r.y += r.vy * dt; r.rot += r.vr * dt;
+      if (Math.hypot(r.x - ship.x, r.y - ship.y) < r.r * 0.8 + ship.r) hitShip(r, i);
+    }
+    if (!G.dying) updateComets(dt);
+  }
+
+  function updateFx(dt) {
+    for (let i = particles.length - 1; i >= 0; i--) {
+      const p = particles[i];
+      p.x += p.vx * dt; p.y += p.vy * dt; p.vx *= 0.97; p.vy *= 0.97; p.life -= dt;
+      if (p.life <= 0) particles.splice(i, 1);
+    }
+    for (let i = lasers.length - 1; i >= 0; i--) { lasers[i].life -= dt; if (lasers[i].life <= 0) lasers.splice(i, 1); }
+    for (let i = texts.length - 1; i >= 0; i--) { const t = texts[i]; t.life -= dt; t.y -= 40 * dt; if (t.life <= 0) texts.splice(i, 1); }
+    shake = Math.max(0, shake - 40 * dt);
+    ship.wobble = Math.max(0, ship.wobble - dt);
+  }
+
+  // ---------- Drawing ----------
+  const rgba = (c, a) => `rgba(${c[0]},${c[1]},${c[2]},${a})`;
+  function glow(x, y, r, c) {
+    const g = ctx.createRadialGradient(x, y, 0, x, y, r);
+    g.addColorStop(0, rgba(c, c[3])); g.addColorStop(1, rgba(c, 0));
+    ctx.fillStyle = g; ctx.fillRect(x - r, y - r, r * 2, r * 2);
+  }
+  function disc(x, y, r, inner, outer) {
+    const g = ctx.createRadialGradient(x - r * 0.35, y - r * 0.35, r * 0.1, x, y, r);
+    g.addColorStop(0, inner); g.addColorStop(1, outer);
+    ctx.fillStyle = g; ctx.beginPath(); ctx.arc(x, y, r, 0, 6.28); ctx.fill();
+  }
+
+  function drawFeature(b, t) {
+    const m = Math.min(W, H);
+    switch (b.feature) {
+      case "bloom": {
+        for (let i = 0; i < 4; i++) {
+          const x = W * (0.2 + 0.2 * i) + Math.sin(t * 0.2 + i) * 20, y = H * (0.18 + 0.12 * (i % 2));
+          glow(x, y, m * (0.22 + 0.04 * i), i % 2 ? [255, 120, 200, 0.16] : [150, 90, 255, 0.16]);
+        }
+        break;
+      }
+      case "moon": {
+        const x = W * 0.8, y = H * 0.2, r = m * 0.09;
+        glow(x, y, r * 2.4, [180, 230, 255, 0.18]);
+        disc(x, y, r, "#f2faff", "#6f8fb0");
+        ctx.fillStyle = "rgba(90,120,160,0.35)";
+        [[0.3, -0.2, 0.2], [-0.35, 0.25, 0.14], [0.1, 0.45, 0.1]].forEach(([dx, dy, s]) => {
+          ctx.beginPath(); ctx.arc(x + dx * r, y + dy * r, s * r, 0, 6.28); ctx.fill();
+        });
+        break;
+      }
+      case "lava": {
+        const x = W * 0.13, y = H * 0.3, r = m * 0.12;
+        glow(x, y, r * 2.6, [255, 90, 20, 0.3]);
+        disc(x, y, r, "#ffb347", "#6a1404");
+        ctx.strokeStyle = `rgba(255,200,80,${0.5 + 0.2 * Math.sin(t * 3)})`; ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.moveTo(x - r * 0.6, y - r * 0.2); ctx.quadraticCurveTo(x, y + r * 0.1, x + r * 0.5, y - r * 0.4);
+        ctx.moveTo(x - r * 0.3, y + r * 0.5); ctx.quadraticCurveTo(x + r * 0.1, y + r * 0.2, x + r * 0.6, y + r * 0.3); ctx.stroke();
+        break;
+      }
+      case "planet": {
+        const x = W * 0.84, y = H * 0.24, r = m * 0.2;
+        glow(x, y, r * 1.8, [60, 220, 150, 0.16]);
+        disc(x, y, r, "#9df5c4", "#0d4a34");
+        ctx.save(); ctx.beginPath(); ctx.arc(x, y, r, 0, 6.28); ctx.clip();
+        for (let i = -4; i <= 4; i++) {
+          ctx.fillStyle = i % 2 ? "rgba(8,40,30,0.22)" : "rgba(200,255,220,0.1)";
+          ctx.fillRect(x - r, y + i * r * 0.22, r * 2, r * 0.12);
+        }
+        ctx.restore();
+        break;
+      }
+      case "crystals": {
+        for (let i = 0; i < 8; i++) {
+          const x = ((i * 0.137 + 0.07) % 1) * W, y = ((i * 0.293 + 0.11) % 1) * H * 0.7 + 40;
+          const s = m * (0.025 + (i % 3) * 0.012);
+          ctx.save(); ctx.translate(x, y + Math.sin(t * 0.6 + i) * 6); ctx.rotate(t * 0.1 + i);
+          ctx.fillStyle = i % 2 ? "rgba(120,240,255,0.16)" : "rgba(190,140,255,0.16)";
+          ctx.strokeStyle = "rgba(220,255,255,0.4)"; ctx.lineWidth = 1;
+          ctx.beginPath(); ctx.moveTo(0, -s * 1.8); ctx.lineTo(s, 0); ctx.lineTo(0, s * 1.8); ctx.lineTo(-s, 0); ctx.closePath();
+          ctx.fill(); ctx.stroke(); ctx.restore();
+        }
+        break;
+      }
+      case "sun": {
+        glow(W, 0, m * 0.9, [255, 200, 90, 0.45]);
+        disc(W - m * 0.02, m * 0.02, m * 0.2, "#fff6d0", "#ffb020");
+        ctx.strokeStyle = `rgba(255,190,80,${0.25 + 0.15 * Math.sin(t * 2)})`; ctx.lineWidth = 3;
+        ctx.beginPath(); ctx.arc(W - m * 0.02, m * 0.02, m * 0.26 + Math.sin(t * 2) * 4, 0, 6.28); ctx.stroke();
+        break;
+      }
+      case "rings": {
+        const x = W * 0.8, y = H * 0.25, r = m * 0.13;
+        const ring = (start, end) => {
+          ctx.save(); ctx.translate(x, y); ctx.rotate(-0.35);
+          ctx.strokeStyle = "rgba(240,200,150,0.5)"; ctx.lineWidth = r * 0.16;
+          ctx.beginPath(); ctx.ellipse(0, 0, r * 2, r * 0.55, 0, start, end); ctx.stroke();
+          ctx.restore();
+        };
+        ring(Math.PI, Math.PI * 2);
+        disc(x, y, r, "#ffd9a8", "#6b3f2a");
+        ring(0, Math.PI);
+        break;
+      }
+      case "blackhole": {
+        const x = W * 0.76, y = H * 0.26, r = m * 0.07;
+        glow(x, y, r * 5, [255, 130, 40, 0.18]);
+        ctx.save(); ctx.translate(x, y); ctx.rotate(-0.25);
+        for (let i = 0; i < 3; i++) {
+          ctx.strokeStyle = `rgba(255,${150 + i * 30},${60 + i * 40},${0.45 - i * 0.1})`;
+          ctx.lineWidth = r * (0.5 - i * 0.12);
+          ctx.beginPath(); ctx.ellipse(0, 0, r * (2.2 + i * 0.5), r * (0.55 + i * 0.12), 0, 0, 6.28); ctx.stroke();
+        }
+        ctx.restore();
+        ctx.fillStyle = "#000"; ctx.beginPath(); ctx.arc(x, y, r, 0, 6.28); ctx.fill();
+        ctx.strokeStyle = "rgba(255,210,140,0.85)"; ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.arc(x, y, r * 1.08, 0, 6.28); ctx.stroke();
+        break;
+      }
+      case "cotton": {
+        // fluffy cotton-candy clouds
+        const clouds = [[0.18, 0.2, "255,170,220"], [0.75, 0.15, "160,210,255"], [0.55, 0.42, "255,200,235"], [0.1, 0.55, "180,220,255"]];
+        clouds.forEach(([fx, fy, c], i) => {
+          const x = W * fx + Math.sin(t * 0.25 + i) * 18, y = H * fy, r = m * 0.07;
+          ctx.fillStyle = `rgba(${c},0.22)`;
+          [[0, 0, 1], [-0.9, 0.2, 0.75], [0.9, 0.15, 0.8], [0.4, -0.5, 0.7], [-0.4, -0.45, 0.65]].forEach(([dx, dy, s]) => {
+            ctx.beginPath(); ctx.arc(x + dx * r, y + dy * r, r * s, 0, 6.28); ctx.fill();
+          });
+        });
+        break;
+      }
+      case "cheese": {
+        const x = W * 0.8, y = H * 0.22, r = m * 0.13;
+        glow(x, y, r * 2.2, [255, 220, 90, 0.25]);
+        disc(x, y, r, "#fff2a0", "#f0b52a");
+        ctx.fillStyle = "rgba(190,120,20,0.45)";
+        [[0.35, -0.3, 0.2], [-0.4, 0.1, 0.16], [0.1, 0.45, 0.13], [-0.1, -0.5, 0.1], [0.5, 0.3, 0.09]].forEach(([dx, dy, s]) => {
+          ctx.beginPath(); ctx.arc(x + dx * r, y + dy * r, s * r, 0, 6.28); ctx.fill();
+        });
+        break;
+      }
+      case "rainbow": {
+        const cols = ["255,90,110", "255,160,70", "255,230,90", "110,230,130", "90,190,255", "170,120,255"];
+        const cx = W * 0.5, cy = H * 0.62, r0 = Math.max(W, H) * 0.42;
+        ctx.lineWidth = Math.max(8, m * 0.022);
+        cols.forEach((c, i) => {
+          ctx.strokeStyle = `rgba(${c},0.22)`;
+          ctx.beginPath(); ctx.arc(cx, cy, r0 - i * ctx.lineWidth, Math.PI * 1.05, Math.PI * 1.95); ctx.stroke();
+        });
+        break;
+      }
+      case "jellybeans": {
+        const cols = ["#ff6b9a", "#ffd166", "#7ee8a2", "#6fc3ff", "#c79bff", "#ff9a5c"];
+        for (let i = 0; i < 12; i++) {
+          const x = ((i * 0.173 + 0.05) % 1) * W, y = ((i * 0.311 + 0.08) % 1) * H * 0.75 + 30 + Math.sin(t * 0.7 + i) * 8;
+          ctx.save(); ctx.translate(x, y); ctx.rotate(t * 0.3 + i);
+          ctx.globalAlpha = 0.3; ctx.fillStyle = cols[i % cols.length];
+          ctx.beginPath(); ctx.ellipse(0, 0, m * 0.022, m * 0.013, 0, 0, 6.28); ctx.fill();
+          ctx.globalAlpha = 0.25; ctx.fillStyle = "#fff";
+          ctx.beginPath(); ctx.ellipse(-m * 0.008, -m * 0.004, m * 0.006, m * 0.003, 0, 0, 6.28); ctx.fill();
+          ctx.restore();
+        }
+        ctx.globalAlpha = 1;
+        break;
+      }
+      case "disco": {
+        const x = W * 0.5, y = 40;
+        const cols = ["255,60,200", "60,220,255", "255,230,80", "120,255,140"];
+        for (let i = 0; i < 4; i++) {
+          const a = Math.PI / 2 + Math.sin(t * 0.8 + i * 1.6) * 0.9;
+          const len = Math.max(W, H);
+          ctx.fillStyle = `rgba(${cols[i]},0.09)`;
+          ctx.beginPath(); ctx.moveTo(x, y);
+          ctx.lineTo(x + Math.cos(a - 0.12) * len, y + Math.sin(a - 0.12) * len);
+          ctx.lineTo(x + Math.cos(a + 0.12) * len, y + Math.sin(a + 0.12) * len);
+          ctx.closePath(); ctx.fill();
+        }
+        const r = m * 0.045;
+        disc(x, y, r, "#ffffff", "#8a8fb0");
+        ctx.fillStyle = "rgba(255,255,255,0.5)";
+        for (let i = 0; i < 6; i++) {
+          const a = t * 1.5 + i;
+          ctx.fillRect(x + Math.cos(a) * r * 0.6 - 2, y + Math.sin(a) * r * 0.5 - 2, 4, 4);
+        }
+        break;
+      }
+      case "polka": {
+        const cols = ["255,180,120", "170,140,255", "255,150,200", "140,220,255"];
+        for (let i = 0; i < 14; i++) {
+          const x = ((i * 0.219 + 0.03) % 1) * W, y = (((i * 0.377 + 0.1) % 1) * H + t * (6 + (i % 3) * 3)) % H;
+          ctx.fillStyle = `rgba(${cols[i % 4]},0.16)`;
+          ctx.beginPath(); ctx.arc(x, y, m * (0.025 + (i % 3) * 0.015), 0, 6.28); ctx.fill();
+        }
+        break;
+      }
+      case "bubbles": {
+        for (let i = 0; i < 12; i++) {
+          const r = m * (0.015 + (i % 4) * 0.01);
+          const x = ((i * 0.167 + 0.06) % 1) * W + Math.sin(t + i) * 10;
+          const y = H - ((t * (14 + (i % 5) * 6) + i * 97) % (H + 60)) + 30;
+          ctx.strokeStyle = "rgba(200,240,255,0.35)"; ctx.lineWidth = 1.5;
+          ctx.beginPath(); ctx.arc(x, y, r, 0, 6.28); ctx.stroke();
+          ctx.fillStyle = "rgba(255,255,255,0.35)";
+          ctx.beginPath(); ctx.arc(x - r * 0.35, y - r * 0.35, r * 0.2, 0, 6.28); ctx.fill();
+        }
+        break;
+      }
+      case "donut": {
+        const x = W * 0.8, y = H * 0.24, r = m * 0.12;
+        glow(x, y, r * 2, [255, 150, 190, 0.2]);
+        ctx.lineWidth = r * 0.7;
+        ctx.strokeStyle = "#d99a5b";
+        ctx.beginPath(); ctx.arc(x, y, r * 0.75, 0, 6.28); ctx.stroke();
+        ctx.lineWidth = r * 0.55;
+        ctx.strokeStyle = "#ff8fc8";
+        ctx.beginPath(); ctx.arc(x, y - r * 0.04, r * 0.75, 0, 6.28); ctx.stroke();
+        const sprink = ["#fff", "#6fc3ff", "#ffd166", "#7ee8a2"];
+        for (let i = 0; i < 14; i++) {
+          const a = i * 0.45 + 0.2, rr = r * (0.6 + (i % 3) * 0.13);
+          ctx.save(); ctx.translate(x + Math.cos(a) * rr, y - r * 0.04 + Math.sin(a) * rr); ctx.rotate(a * 3);
+          ctx.fillStyle = sprink[i % 4]; ctx.fillRect(-3, -1, 6, 2); ctx.restore();
+        }
+        break;
+      }
+      case "smiley": {
+        const x = W * 0.82, y = H * 0.2, r = m * 0.11;
+        glow(x, y, r * 2.4, [255, 210, 80, 0.32]);
+        disc(x, y, r, "#fff3a0", "#ffb020");
+        ctx.fillStyle = "#6a3a00";
+        const blink = Math.sin(t * 1.3) > 0.97 ? 0.15 : 1;
+        ctx.beginPath(); ctx.ellipse(x - r * 0.33, y - r * 0.2, r * 0.09, r * 0.14 * blink, 0, 0, 6.28); ctx.fill();
+        ctx.beginPath(); ctx.ellipse(x + r * 0.33, y - r * 0.2, r * 0.09, r * 0.14 * blink, 0, 0, 6.28); ctx.fill();
+        ctx.strokeStyle = "#6a3a00"; ctx.lineWidth = Math.max(2, r * 0.07); ctx.lineCap = "round";
+        ctx.beginPath(); ctx.arc(x, y + r * 0.05, r * 0.45, 0.2 * Math.PI, 0.8 * Math.PI); ctx.stroke();
+        ctx.lineCap = "butt";
+        ctx.fillStyle = "rgba(255,120,120,0.35)";
+        ctx.beginPath(); ctx.arc(x - r * 0.55, y + r * 0.15, r * 0.12, 0, 6.28); ctx.fill();
+        ctx.beginPath(); ctx.arc(x + r * 0.55, y + r * 0.15, r * 0.12, 0, 6.28); ctx.fill();
+        break;
+      }
+      case "kitty": {
+        // a cat face drawn as a constellation
+        const x = W * 0.78, y = H * 0.24, s = m * 0.12;
+        const pts = [[-1, -0.2], [-0.85, -1], [-0.35, -0.55], [0.35, -0.55], [0.85, -1], [1, -0.2], [0.7, 0.55], [0, 0.85], [-0.7, 0.55]];
+        ctx.strokeStyle = "rgba(220,190,255,0.4)"; ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        pts.forEach(([px, py], i) => (i ? ctx.lineTo(x + px * s, y + py * s) : ctx.moveTo(x + px * s, y + py * s)));
+        ctx.closePath(); ctx.stroke();
+        // whiskers
+        [[-0.25, 0.25, -1.2, 0.1], [-0.25, 0.32, -1.15, 0.4], [0.25, 0.25, 1.2, 0.1], [0.25, 0.32, 1.15, 0.4]].forEach(([a, b, c, d]) => {
+          ctx.beginPath(); ctx.moveTo(x + a * s, y + b * s); ctx.lineTo(x + c * s, y + d * s); ctx.stroke();
+        });
+        const tw = 0.6 + 0.4 * Math.sin(t * 3);
+        pts.concat([[-0.38, -0.05], [0.38, -0.05], [0, 0.22]]).forEach(([px, py], i) => {
+          ctx.fillStyle = i >= pts.length ? `rgba(255,220,120,${tw})` : "rgba(255,240,255,0.9)";
+          ctx.beginPath(); ctx.arc(x + px * s, y + py * s, i >= pts.length ? 3.5 : 2.5, 0, 6.28); ctx.fill();
+        });
+        break;
+      }
+      case "aurora": {
+        const cols = [[120, 255, 140], [80, 230, 220], [230, 90, 220]];
+        for (let k = 0; k < 3; k++) {
+          const base = H * (0.1 + 0.07 * k);
+          const g = ctx.createLinearGradient(0, base - 30, 0, base + 90);
+          g.addColorStop(0, rgba(cols[k], 0)); g.addColorStop(0.3, rgba(cols[k], 0.18)); g.addColorStop(1, rgba(cols[k], 0));
+          ctx.fillStyle = g; ctx.beginPath(); ctx.moveTo(0, base + 90);
+          for (let x = 0; x <= W + 20; x += 20) ctx.lineTo(x, base + Math.sin(x * 0.008 + t * 0.5 + k * 1.7) * 26);
+          ctx.lineTo(W, base + 90); ctx.closePath(); ctx.fill();
+        }
+        break;
+      }
+    }
+  }
+
+  function paintBiome(b, t) {
+    ctx.fillStyle = b.bg; ctx.fillRect(0, 0, W, H);
+    glow(W * 0.22, H * 0.25, Math.max(W, H) * 0.55, b.n1);
+    glow(W * 0.85, H * 0.7, Math.max(W, H) * 0.45, b.n2);
+    drawFeature(b, t);
+  }
+
+  function drawBackground(t) {
+    paintBiome(biomes()[prevBiome], t);
+    if (biome !== prevBiome) {
+      ctx.globalAlpha = biomeFade;
+      paintBiome(biomes()[biome], t);
+      ctx.globalAlpha = 1;
+    }
+    const sc = biomes()[biome].star;
+    for (const s of stars) {
+      const a = 0.35 + 0.65 * s.z * (0.75 + 0.25 * Math.sin(t * 2 + s.tw));
+      ctx.fillStyle = `rgba(${sc},${a})`;
+      const sz = s.z * 1.8;
+      ctx.fillRect(s.x, s.y, sz, sz);
+    }
+  }
+  function moveStars(dt) {
+    const drift = biomes()[biome].drift;
+    for (const s of stars) {
+      s.y += s.z * drift * dt;
+      if (s.y > H) { s.y = 0; s.x = Math.random() * W; }
+      else if (s.y < 0) { s.y = H; s.x = Math.random() * W; }
+    }
+    if (biomeFade < 1) { biomeFade = Math.min(1, biomeFade + dt / 2.5); if (biomeFade >= 1) prevBiome = biome; }
+  }
+
+  function drawShip(t) {
+    if (G && G.shields <= 0) return;
+    const bob = Math.sin(t * 2) * 3;
+    const wob = ship.wobble > 0 ? Math.sin(ship.wobble * 60) * 3 : 0;
+    ctx.save();
+    ctx.translate(ship.x + wob, ship.y + bob);
+    // shield ring
+    const sh = G ? G.shields : 3;
+    if (sh > 0) {
+      ctx.strokeStyle = `rgba(95,242,255,${0.12 + 0.12 * sh})`;
+      ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.arc(0, 0, 38 + Math.sin(t * 3) * 1.5, 0, 6.28); ctx.stroke();
+    }
+    ctx.rotate(ship.angle + Math.PI / 2);
+    // flame
+    const fl = 10 + Math.random() * 8;
+    ctx.fillStyle = "rgba(255,140,60,0.85)";
+    ctx.beginPath(); ctx.moveTo(-7, 12); ctx.lineTo(0, 12 + fl); ctx.lineTo(7, 12); ctx.fill();
+    ctx.fillStyle = "rgba(255,240,180,0.9)";
+    ctx.beginPath(); ctx.moveTo(-3.5, 12); ctx.lineTo(0, 12 + fl * 0.6); ctx.lineTo(3.5, 12); ctx.fill();
+    // body
+    const g = ctx.createLinearGradient(-18, 0, 18, 0);
+    g.addColorStop(0, "#e09a1e"); g.addColorStop(0.5, "#ffd768"); g.addColorStop(1, "#e09a1e");
+    ctx.fillStyle = g;
+    ctx.beginPath();
+    ctx.moveTo(0, -28); ctx.lineTo(9, -6); ctx.lineTo(20, 14); ctx.lineTo(8, 11);
+    ctx.lineTo(0, 15); ctx.lineTo(-8, 11); ctx.lineTo(-20, 14); ctx.lineTo(-9, -6); ctx.closePath();
+    ctx.fill();
+    ctx.strokeStyle = "#7a4d08"; ctx.lineWidth = 1.5; ctx.stroke();
+    // cockpit
+    ctx.fillStyle = "#5ff2ff";
+    ctx.beginPath(); ctx.ellipse(0, -8, 4.5, 7, 0, 0, 6.28); ctx.fill();
+    ctx.fillStyle = "rgba(255,255,255,0.7)";
+    ctx.beginPath(); ctx.ellipse(-1.5, -10, 1.5, 2.5, 0, 0, 6.28); ctx.fill();
+    ctx.restore();
+  }
+
+  function drawRock(r) {
+    const d = Math.hypot(r.x - ship.x, r.y - ship.y);
+    const danger = d < 170 * scale + 40;
+    ctx.save(); ctx.translate(r.x, r.y);
+    if (danger) {
+      ctx.strokeStyle = `rgba(255,93,115,${0.35 + 0.3 * Math.sin(performance.now() / 90)})`;
+      ctx.lineWidth = 3;
+      ctx.beginPath(); ctx.arc(0, 0, r.r * 1.25, 0, 6.28); ctx.stroke();
+    }
+    ctx.save(); ctx.rotate(r.rot);
+    const g = ctx.createRadialGradient(-r.r * 0.3, -r.r * 0.3, r.r * 0.1, 0, 0, r.r * 1.1);
+    g.addColorStop(0, `hsl(${r.hue},${r.sat}%,58%)`); g.addColorStop(1, `hsl(${r.hue},${r.sat + 4}%,26%)`);
+    ctx.fillStyle = g;
+    ctx.beginPath();
+    r.shape.forEach((m, i) => {
+      const a = (i / r.shape.length) * 6.283;
+      const px = Math.cos(a) * r.r * m, py = Math.sin(a) * r.r * m;
+      i ? ctx.lineTo(px, py) : ctx.moveTo(px, py);
+    });
+    ctx.closePath(); ctx.fill();
+    ctx.strokeStyle = `hsl(${r.hue},30%,72%)`; ctx.lineWidth = 1.5; ctx.stroke();
+    ctx.fillStyle = `hsla(${r.hue},25%,20%,0.5)`;
+    ctx.beginPath(); ctx.arc(r.r * 0.35, r.r * 0.2, r.r * 0.16, 0, 6.28); ctx.fill();
+    ctx.beginPath(); ctx.arc(-r.r * 0.25, r.r * 0.4, r.r * 0.1, 0, 6.28); ctx.fill();
+    ctx.restore();
+    // locked-on target ring
+    if (G && G.lock === r) {
+      ctx.strokeStyle = "rgba(95,242,255,0.85)"; ctx.lineWidth = 2.5;
+      ctx.setLineDash && ctx.setLineDash([6, 5]);
+      ctx.beginPath(); ctx.arc(0, 0, r.r * 1.15, performance.now() / 400, performance.now() / 400 + 6.28); ctx.stroke();
+      ctx.setLineDash && ctx.setLineDash([]);
+    }
+    // text (always upright): single letters in capitals, groups and words as typed
+    const single = r.text.length === 1 && /[a-z]/.test(r.text) && !capsOn();
+    const shown = single ? r.text.toUpperCase() : r.text;
+    const size = single ? r.r * 1.05 : Math.min(r.r * 0.8, (r.r * 1.75) / (shown.length * 0.56));
+    ctx.font = `700 ${Math.round(size)}px "Atkinson Hyperlegible", Verdana, sans-serif`;
+    ctx.textAlign = "left"; ctx.textBaseline = "middle";
+    ctx.lineWidth = 5; ctx.strokeStyle = "rgba(8,10,34,0.85)"; ctx.lineJoin = "round";
+    const ws = [...shown].map((c) => ctx.measureText(c).width);
+    let cx = -ws.reduce((a, c) => a + c, 0) / 2;
+    [...shown].forEach((c, i) => {
+      ctx.strokeText(c, cx, 2);
+      ctx.fillStyle = i < r.typed ? "rgba(125,255,176,0.9)" : danger ? "#ffd0d6" : "#ffffff";
+      ctx.fillText(c, cx, 2);
+      cx += ws[i];
+    });
+    ctx.restore();
+  }
+
+  function drawBoss(t) {
+    const b = G.boss, st = BOSS_STYLE[b.kind], { x, y } = bossPos();
+    const { w, h } = bossDims(b.kind);
+    const dome = b.kind === "ultra" ? ULTRA_CORES[b.wi % 3] : st.dome;
+    ctx.save(); ctx.translate(x, y);
+    // warning ring as it gets close
+    if (b.p > 0.65) {
+      ctx.strokeStyle = `rgba(255,93,115,${0.35 + 0.3 * Math.sin(t * 14)})`;
+      ctx.lineWidth = 3;
+      ctx.beginPath(); ctx.ellipse(0, 0, w * 0.62, h * 1.25, 0, 0, 6.28); ctx.stroke();
+    }
+    // tractor beam glow
+    const tb = ctx.createLinearGradient(0, h * 0.3, 0, h * 2.2);
+    tb.addColorStop(0, `rgba(${dome},0.25)`); tb.addColorStop(1, `rgba(${dome},0)`);
+    ctx.fillStyle = tb;
+    ctx.beginPath(); ctx.moveTo(-w * 0.15, h * 0.3); ctx.lineTo(-w * 0.3, h * 2.2); ctx.lineTo(w * 0.3, h * 2.2); ctx.lineTo(w * 0.15, h * 0.3); ctx.closePath(); ctx.fill();
+    // ultra: orbiting ring of lights and spikes underneath
+    if (b.kind === "ultra") {
+      ctx.strokeStyle = "rgba(255,240,192,0.35)"; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.ellipse(0, h * 0.05, w * 0.68, h * 0.8, 0, 0, 6.28); ctx.stroke();
+      for (let i = 0; i < 10; i++) {
+        const a = t * 0.8 + i * 0.628;
+        ctx.fillStyle = `rgba(${dome},0.95)`;
+        ctx.beginPath(); ctx.arc(Math.cos(a) * w * 0.68, h * 0.05 + Math.sin(a) * h * 0.8, 3.5, 0, 6.28); ctx.fill();
+      }
+      ctx.fillStyle = st.hull[1];
+      for (let i = -2; i <= 2; i++) {
+        ctx.beginPath(); ctx.moveTo(i * w * 0.16 - w * 0.04, h * 0.3); ctx.lineTo(i * w * 0.16, h * 0.9); ctx.lineTo(i * w * 0.16 + w * 0.04, h * 0.3); ctx.fill();
+      }
+    }
+    // mega and ultra: side cannons
+    if (b.kind !== "normal") {
+      ctx.fillStyle = st.hull[2]; ctx.strokeStyle = st.rim; ctx.lineWidth = 1.2;
+      [-1, 1].forEach((sd) => {
+        ctx.beginPath(); ctx.rect(sd > 0 ? w * 0.44 : -w * 0.56, -h * 0.14, w * 0.12, h * 0.28); ctx.fill(); ctx.stroke();
+        ctx.fillStyle = st.light;
+        ctx.beginPath(); ctx.arc(sd * w * 0.58, 0, 3, 0, 6.28); ctx.fill();
+        ctx.fillStyle = st.hull[2];
+      });
+    }
+    // dome
+    ctx.fillStyle = `rgba(${dome},0.6)`;
+    ctx.beginPath(); ctx.ellipse(0, -h * 0.25, w * 0.24, h * 0.85, 0, Math.PI, 0); ctx.fill();
+    if (b.kind === "ultra") {
+      ctx.fillStyle = `rgba(${dome},${0.6 + 0.4 * Math.sin(t * 5)})`;
+      ctx.beginPath(); ctx.arc(0, -h * 0.45, h * 0.22, 0, 6.28); ctx.fill();
+    }
+    ctx.fillStyle = "rgba(255,255,255,0.45)";
+    ctx.beginPath(); ctx.ellipse(-w * 0.08, -h * 0.65, w * 0.05, h * 0.2, 0, 0, 6.28); ctx.fill();
+    // saucer body
+    const g = ctx.createLinearGradient(0, -h / 2, 0, h / 2);
+    g.addColorStop(0, st.hull[0]); g.addColorStop(0.55, st.hull[1]); g.addColorStop(1, st.hull[2]);
+    ctx.fillStyle = g;
+    ctx.beginPath(); ctx.ellipse(0, 0, w / 2, h / 2, 0, 0, 6.28); ctx.fill();
+    ctx.strokeStyle = st.rim; ctx.lineWidth = 1.5; ctx.stroke();
+    // rim lights
+    const nl = b.kind === "normal" ? 7 : 9;
+    for (let i = 0; i < nl; i++) {
+      const lx = (i - (nl - 1) / 2) * w * (0.9 / nl);
+      const on = (Math.floor(t * 6) + i) % 2 === 0;
+      ctx.fillStyle = st.light; ctx.globalAlpha = on ? 1 : 0.3;
+      ctx.beginPath(); ctx.arc(lx, h * 0.12, 3.2, 0, 6.28); ctx.fill();
+    }
+    ctx.globalAlpha = 1;
+    if (b.flash > 0) {
+      ctx.fillStyle = `rgba(255,93,115,${b.flash * 1.2})`;
+      ctx.beginPath(); ctx.ellipse(0, 0, w / 2, h / 2, 0, 0, 6.28); ctx.fill();
+    }
+    if (b.hurt > 0) {
+      ctx.fillStyle = `rgba(255,255,255,${b.hurt * 3})`;
+      ctx.beginPath(); ctx.ellipse(0, 0, w / 2, h / 2, 0, 0, 6.28); ctx.fill();
+    }
+    ctx.restore();
+
+    // the word or sentence, above the ship (sentences wrap onto several lines on narrow screens)
+    const text = settings.difficulty === "easy" && !capsOn() ? b.word.toUpperCase() : b.word;
+    const sentence = text.includes(" ");
+    const maxW = Math.min(W - 48, 760);
+    const size = Math.round(Math.max(20, Math.min(sentence ? 34 : 42, maxW / (text.length * (sentence ? 0.56 : 0.78)))));
+    ctx.font = `700 ${size}px "Atkinson Hyperlegible", Verdana, sans-serif`;
+    ctx.textAlign = "left"; ctx.textBaseline = "middle";
+    const gap = sentence ? size * 0.03 : size * 0.12;
+    const widths = [...text].map((c) => ctx.measureText(c).width);
+    const padX = size * 0.4, padY = size * 0.35;
+    const lines = [];
+    let start = 0, lineW = 0, lastSpace = -1;
+    for (let i = 0; i < text.length; i++) {
+      const cw = widths[i] + gap;
+      if (lineW + cw > maxW - padX * 2 && lastSpace > start) {
+        lines.push([start, lastSpace]);
+        start = lastSpace + 1; lastSpace = -1; lineW = 0;
+        for (let j = start; j <= i; j++) lineW += widths[j] + gap;
+      } else lineW += cw;
+      if (text[i] === " ") lastSpace = i;
+    }
+    lines.push([start, text.length - 1]);
+    const lineWidth = ([a, z]) => { let s = 0; for (let i = a; i <= z; i++) s += widths[i] + gap; return s - gap; };
+    const lineH = size * 1.3;
+    const total = Math.max(...lines.map(lineWidth));
+    b.extraH = (lines.length - 1) * lineH;
+    const tx = Math.max(total / 2 + padX + 8, Math.min(W - total / 2 - padX - 8, x));
+    const lastY = y - h * 1.15 - size * 0.7;
+    const firstY = lastY - b.extraH;
+    ctx.fillStyle = "rgba(8,10,34,0.78)";
+    ctx.strokeStyle = b.flash > 0 ? "rgba(255,93,115,0.9)" : "rgba(150,160,255,0.35)";
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    const rx = tx - total / 2 - padX, ry = firstY - size / 2 - padY, rw = total + padX * 2, rh = b.extraH + size + padY * 2;
+    if (ctx.roundRect) ctx.roundRect(rx, ry, rw, rh, 12); else ctx.rect(rx, ry, rw, rh);
+    ctx.fill(); ctx.stroke();
+    const label = BOSS_INFO[b.kind].label;
+    if (label) {
+      ctx.font = `400 15px "Bungee", "Arial Black", sans-serif`;
+      ctx.textAlign = "center";
+      ctx.lineWidth = 4; ctx.strokeStyle = "rgba(8,10,34,0.85)";
+      const txt = `${label} · ${sentenceMode() ? "PART" : "WORD"} ${b.wi + 1} OF ${b.words.length}`;
+      ctx.strokeText(txt, tx, ry - 13);
+      ctx.fillStyle = st.label; ctx.fillText(txt, tx, ry - 13);
+      ctx.font = `700 ${size}px "Atkinson Hyperlegible", Verdana, sans-serif`;
+      ctx.textAlign = "left";
+    }
+    lines.forEach((ln, li) => {
+      const ly = firstY + li * lineH;
+      let cx = tx - lineWidth(ln) / 2;
+      for (let i = ln[0]; i <= ln[1]; i++) {
+        const c = text[i];
+        if (i < b.idx) ctx.fillStyle = "rgba(125,255,176,0.85)";
+        else if (i === b.idx) ctx.fillStyle = "#ffc94a";
+        else ctx.fillStyle = "#ffffff";
+        if (c === " ") {
+          // show upcoming spaces as a soft dot so kids know to press the space bar
+          if (i >= b.idx) {
+            ctx.globalAlpha = i === b.idx ? 1 : 0.45;
+            ctx.beginPath(); ctx.arc(cx + widths[i] / 2, ly + 2, Math.max(2, size * 0.07), 0, 6.28); ctx.fill();
+            ctx.globalAlpha = 1;
+          }
+        } else ctx.fillText(c, cx, ly + 1);
+        if (i === b.idx && b.enter >= 1) {
+          ctx.fillStyle = "#ffc94a";
+          ctx.fillRect(cx, ly + size * 0.55, widths[i], 3 + Math.sin(t * 8) * 1);
+        }
+        cx += widths[i] + gap;
+      }
+    });
+  }
+
+  function drawComets(t) {
+    for (const c of G.comets) {
+      const label = /[a-z]/.test(c.ch) && !capsOn() ? c.ch.toUpperCase() : c.ch;
+      const tag = charTag(c.ch);
+      if (c.warn > 0) {
+        // warning marker at the screen edge where it will come from: steady (no strobing) so the
+        // character is easy to read, with a ring that shrinks as launch gets closer
+        const R = 28;
+        const mx = Math.max(R + 8, Math.min(W - R - 8, c.x)), my = Math.max(84 + R, Math.min(playH - R - 30, c.y));
+        glow(mx, my, R * 2.2, [255, 150, 60, 0.35 + 0.15 * Math.sin(t * 6)]);
+        ctx.fillStyle = "#fff6e0";
+        ctx.beginPath(); ctx.arc(mx, my, R, 0, 6.28); ctx.fill();
+        ctx.strokeStyle = "#ff8c3c"; ctx.lineWidth = 4;
+        ctx.beginPath(); ctx.arc(mx, my, R + 5, -Math.PI / 2, -Math.PI / 2 + 6.283 * (c.warn / COMET_WARN)); ctx.stroke();
+        ctx.fillStyle = "#2a0f00";
+        ctx.font = `700 34px "Atkinson Hyperlegible", Verdana, sans-serif`;
+        ctx.textAlign = "center"; ctx.textBaseline = "middle";
+        ctx.fillText(label, mx, my + 2);
+        if (tag) cometTag(tag, mx, my + R + 18);
+        continue;
+      }
+      const sp = Math.hypot(c.vx, c.vy) || 1;
+      const tx = c.x - (c.vx / sp) * 90, ty = c.y - (c.vy / sp) * 90;
+      const g = ctx.createLinearGradient(c.x, c.y, tx, ty);
+      g.addColorStop(0, "rgba(255,170,80,0.85)"); g.addColorStop(1, "rgba(255,90,40,0)");
+      ctx.strokeStyle = g; ctx.lineWidth = 12; ctx.lineCap = "round";
+      ctx.beginPath(); ctx.moveTo(c.x, c.y); ctx.lineTo(tx, ty); ctx.stroke();
+      ctx.lineCap = "butt";
+      glow(c.x, c.y, 34, [255, 150, 60, 0.55]);
+      ctx.fillStyle = "#fff2c0";
+      ctx.beginPath(); ctx.arc(c.x, c.y, 21, 0, 6.28); ctx.fill();
+      ctx.strokeStyle = "#ff8c3c"; ctx.lineWidth = 3; ctx.stroke();
+      ctx.fillStyle = "#3a1402";
+      ctx.font = `700 28px "Atkinson Hyperlegible", Verdana, sans-serif`;
+      ctx.textAlign = "center"; ctx.textBaseline = "middle";
+      ctx.fillText(label, c.x, c.y + 2);
+      if (tag) cometTag(tag, c.x, c.y + 38);
+    }
+  }
+  // Small name tag (e.g. "semicolon") under a comet
+  function cometTag(text, x, y) {
+    ctx.font = `700 13px "Atkinson Hyperlegible", Verdana, sans-serif`;
+    const w = ctx.measureText(text).width + 14;
+    x = Math.max(w / 2 + 6, Math.min(W - w / 2 - 6, x)); // keep the tag on screen
+    ctx.fillStyle = "rgba(20,8,0,0.82)";
+    ctx.beginPath();
+    if (ctx.roundRect) ctx.roundRect(x - w / 2, y - 10, w, 20, 10); else ctx.rect(x - w / 2, y - 10, w, 20);
+    ctx.fill();
+    ctx.fillStyle = "#ffd9a8";
+    ctx.textAlign = "center"; ctx.textBaseline = "middle";
+    ctx.fillText(text, x, y + 1);
+  }
+
+  function drawFx() {
+    for (const l of lasers) {
+      const a = l.life / l.max;
+      ctx.strokeStyle = `rgba(95,242,255,${a})`; ctx.lineWidth = 6 * a + 1;
+      ctx.beginPath(); ctx.moveTo(l.x1, l.y1); ctx.lineTo(l.x2, l.y2); ctx.stroke();
+      ctx.strokeStyle = `rgba(255,255,255,${a})`; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.moveTo(l.x1, l.y1); ctx.lineTo(l.x2, l.y2); ctx.stroke();
+    }
+    for (const p of particles) {
+      ctx.globalAlpha = Math.max(0, p.life / p.max);
+      ctx.fillStyle = p.color;
+      ctx.fillRect(p.x - p.size / 2, p.y - p.size / 2, p.size, p.size);
+    }
+    ctx.globalAlpha = 1;
+    ctx.textAlign = "center"; ctx.textBaseline = "middle";
+    ctx.font = `400 20px "Bungee", "Arial Black", sans-serif`;
+    for (const t of texts) {
+      ctx.globalAlpha = Math.max(0, t.life / t.max);
+      ctx.fillStyle = t.color; ctx.fillText(t.s, t.x, t.y);
+    }
+    ctx.globalAlpha = 1;
+  }
+
+  // ---------- HUD & screens ----------
+  function updateHud() {
+    if (!G) return;
+    $("#score").textContent = G.score;
+    paintWpm();
+    $("#level").textContent = `${G.level}/${MAX_LEVEL}`;
+    const kind = bossKind(G.level);
+    $("#toBossLbl").textContent = kind === "ultra" ? "Ultra boss" : kind === "mega" ? "Mega boss" : "Boss";
+    const tb = $("#toBoss");
+    if (G.phase === "won") { tb.textContent = "Beaten!"; tb.classList.remove("now"); }
+    else if (G.phase === "rocks") { tb.textContent = ROCKS_PER_LEVEL - G.levelHits + " left"; tb.classList.remove("now"); }
+    else { tb.textContent = "Now!"; tb.classList.add("now"); }
+    const mult = streakMult(G.streak);
+    const st = $("#streak");
+    st.textContent = mult > 1 ? `${G.streak} ×${mult}` : G.streak;
+    st.classList.toggle("hot", mult > 1);
+    [...$("#shields").children].forEach((el, i) => el.classList.toggle("gone", i >= G.shields));
+  }
+
+  function show(id) {
+    ["#menu", "#pause", "#over", "#won"].forEach((s) => { $(s).hidden = s !== id; });
+  }
+
+  function refreshMenuBest() {
+    const b = store.get(bestKey(), 0);
+    const m = settingsMult();
+    const multTxt = `Points <b>×${Number.isInteger(m) ? m : m.toFixed(2).replace(/0$/, "")}</b> with these settings`;
+    $("#menuBest").innerHTML = multTxt + " · " + (b ? `Best score: <b>${b}</b>` : "No best score yet. Go set one!");
+  }
+
+  function startGame() {
+    initAudio(); newGame(); mode = "play"; show(null);
+  }
+  function pauseGame() {
+    if (mode !== "play") return;
+    mode = "pause"; show("#pause"); $("#resumeBtn").focus();
+  }
+  function resumeGame() {
+    if (mode !== "pause") return;
+    initAudio(); mode = "play"; show(null); last = performance.now();
+  }
+  function toMenu() {
+    mode = "menu"; G = null; biome = prevBiome = 0; biomeFade = 1;
+    updateLiveKeys(); refreshMenuBest(); show("#menu");
+    $("#startBtn").focus();
+  }
+  // Fills the shared result tiles on the game-over ("r") or victory ("w") screen.
+  function fillResults(p) {
+    const prev = store.get(bestKey(), 0);
+    const isBest = G.score > prev;
+    if (isBest) store.set(bestKey(), G.score);
+    const total = G.hits + G.misses;
+    const minutes = Math.max(G.t, 1) / 60;
+    const acc = total ? G.hits / total : 0;
+    $(`#${p}Score`).textContent = G.score;
+    $(`#${p}Best`).textContent = Math.max(prev, G.score);
+    $(`#${p}Acc`).textContent = total ? Math.round(acc * 100) + "%" : "–";
+    $(`#${p}Lpm`).textContent = finalWpm();
+    $(`#${p}NewBest`).hidden = !isBest || G.score === 0;
+    const leaked = Object.entries(G.leaked).sort((a, b) => b[1] - a[1]).slice(0, 5).map((e) => e[0]);
+    $(`#${p}Practice`).innerHTML = leaked.length
+      ? '<span class="hint">Keys to practice:</span>' +
+        leaked.map((k) => `<span class="k" style="--f:var(--f${FINGER[lc(k)] ?? 3})">${keyLabel(k)}</span>`).join("")
+      : '<span class="hint">No asteroids or bosses got through. Flawless flying!</span>';
+    return acc;
+  }
+  function gameOver() {
+    mode = "over";
+    fillResults("r");
+    $("#rLevel").textContent = `${G.level}/${MAX_LEVEL}`;
+    $("#rBosses").textContent = `${G.bosses}/${MAX_LEVEL}`;
+    show("#over"); $("#againBtn").focus();
+  }
+  function winGame() {
+    mode = "won";
+    const acc = fillResults("w");
+    const n = acc >= 0.95 ? 3 : acc >= 0.85 ? 2 : 1;
+    const stars = $("#wStars");
+    stars.innerHTML = [0, 1, 2].map((i) => `<span class="${i < n ? "" : "dim"}">★</span>`).join("");
+    stars.setAttribute("aria-label", `${n} out of 3 stars`);
+    $("#wStarNote").textContent = n === 3 ? "3 stars for 95% accuracy or better!" : `Reach ${n === 2 ? "95" : "85"}% accuracy for ${n + 1} stars.`;
+    show("#won"); $("#wAgainBtn").focus();
+  }
+
+  // ---------- Input ----------
+  document.addEventListener("keydown", (e) => {
+    if (e.ctrlKey || e.metaKey || e.altKey) return;
+    const k = e.key;
+    if (k === "Escape") {
+      if (mode === "play") pauseGame(); else if (mode === "pause") resumeGame();
+      e.preventDefault(); return;
+    }
+    if (k === "Enter") {
+      if (mode === "menu" || mode === "over" || mode === "won") {
+        const id = document.activeElement && document.activeElement.id;
+        if (id === "menuBtn" || id === "quitBtn" || id === "wMenuBtn") return;
+        e.preventDefault(); startGame();
+      }
+      return;
+    }
+    if (mode === "play" && /^[a-zA-Z;,.'\/\-!? ]$/.test(k)) {
+      e.preventDefault();
+      initAudio();
+      handleLetter(capsOn() ? k : k.toLowerCase());
+    }
+  });
+
+  document.querySelectorAll('input[name="lesson"]').forEach((el) => {
+    el.checked = el.value === settings.lesson;
+    el.addEventListener("change", () => { settings.lesson = el.value; store.set("st-settings", settings); refreshKeyLesson(); refreshMenuBest(); });
+  });
+  document.querySelectorAll('input[name="speed"]').forEach((el) => {
+    el.checked = el.value === settings.speed;
+    el.addEventListener("change", () => { settings.speed = el.value; store.set("st-settings", settings); refreshMenuBest(); });
+  });
+  const capsToggle = $("#capsToggle");
+  capsToggle.checked = !!settings.caps;
+  capsToggle.addEventListener("change", () => { settings.caps = capsToggle.checked; store.set("st-settings", settings); refreshKeyLesson(); refreshMenuBest(); });
+  const symToggle = $("#symbolsToggle");
+  symToggle.checked = !!settings.symbols;
+  symToggle.addEventListener("change", () => { settings.symbols = symToggle.checked; store.set("st-settings", settings); refreshKeyLesson(); refreshMenuBest(); });
+  document.querySelectorAll('input[name="difficulty"]').forEach((el) => {
+    el.checked = el.value === settings.difficulty;
+    el.addEventListener("change", () => { settings.difficulty = el.value; store.set("st-settings", settings); refreshKeyLesson(); refreshMenuBest(); });
+  });
+
+  $("#startBtn").addEventListener("click", startGame);
+  $("#againBtn").addEventListener("click", startGame);
+  $("#menuBtn").addEventListener("click", toMenu);
+  $("#wAgainBtn").addEventListener("click", startGame);
+  $("#wMenuBtn").addEventListener("click", toMenu);
+  $("#quitBtn").addEventListener("click", toMenu);
+  $("#resumeBtn").addEventListener("click", resumeGame);
+  $("#pauseBtn").addEventListener("click", (e) => { e.currentTarget.blur(); mode === "pause" ? resumeGame() : pauseGame(); });
+  const soundBtn = $("#soundBtn");
+  function paintSound() { soundBtn.textContent = muted ? "Sound: Off" : "Sound: On"; soundBtn.setAttribute("aria-pressed", String(!muted)); }
+  soundBtn.addEventListener("click", (e) => { muted = !muted; store.set("st-muted", muted); paintSound(); initAudio(); e.currentTarget.blur(); });
+  paintSound();
+
+  window.addEventListener("blur", pauseGame);
+  document.addEventListener("visibilitychange", () => { if (document.hidden) pauseGame(); });
+  window.addEventListener("resize", resize);
+
+  // ---------- Loop ----------
+  let last = performance.now();
+  function frame(now) {
+    const dt = Math.min(0.05, (now - last) / 1000); last = now;
+    const t = now / 1000;
+    if (mode === "play" && G) update(dt);
+    if (mode !== "pause") { updateFx(dt); moveStars(dt); }
+    ctx.save();
+    if (shake) ctx.translate((Math.random() - 0.5) * shake, (Math.random() - 0.5) * shake);
+    drawBackground(t);
+    if (G) G.rocks.forEach(drawRock);
+    if (G) drawComets(t);
+    if (G && G.boss) drawBoss(t);
+    drawShip(t);
+    drawFx();
+    ctx.restore();
+    requestAnimationFrame(frame);
+  }
+
+  refreshKeyLesson();
+  refreshMenuBest();
+  resize();
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(resize);
+  requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>
