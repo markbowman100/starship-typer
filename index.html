@@ -107,8 +107,9 @@ body {
   background: linear-gradient(to top, rgba(8, 10, 34, 0.95) 60%, rgba(8, 10, 34, 0));
 }
 .kb-row { display: flex; gap: 4px; }
-.kb-row:nth-child(2) { margin-left: 2.2%; }
-.kb-row:nth-child(3) { margin-left: 6%; }
+.kb-row:nth-child(3) { margin-left: 2.2%; }
+.kb-row:nth-child(4) { margin-left: 6%; }
+#keys:not(.nums) .num-row { display: none; }
 #keys.syms .kb-row { margin-left: 0; }
 @media (max-width: 560px) { .kb-row:nth-child(n) { margin-left: 0; } }
 .key {
@@ -212,6 +213,68 @@ legend { font-size: 12px; letter-spacing: 0.14em; text-transform: uppercase; col
 #wStarNote { margin: -8px 0 0; }
 .card p.hint { margin: 0; }
 
+/* Mode switch */
+.modes { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.mode-tab {
+  font-family: var(--body); text-align: left; color: var(--star); cursor: pointer;
+  background: rgba(30, 34, 90, 0.5); border: 2px solid var(--line); border-radius: 14px;
+  padding: 12px 14px; display: flex; flex-direction: column; gap: 4px; min-width: 0;
+}
+.mode-tab b { font-family: var(--display); font-weight: 400; font-size: 18px; letter-spacing: 0.02em; }
+.mode-tab small { font-size: 12px; color: var(--muted); line-height: 1.35; }
+.mode-tab[aria-selected="true"] { border-color: var(--hull); background: rgba(255, 201, 74, 0.12); }
+.mode-tab[aria-selected="true"] b { color: var(--hull); }
+.mode-tab:focus-visible, .tier-tab:focus-visible, .lesson:focus-visible { outline: 3px solid var(--laser); outline-offset: 2px; }
+.panel { display: flex; flex-direction: column; gap: 18px; }
+
+/* Skill Build */
+.tiers { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; }
+@media (max-width: 520px) { .tiers { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.tier-tab {
+  font-family: var(--body); color: var(--star); text-align: left; cursor: pointer; min-width: 0;
+  background: rgba(30, 34, 90, 0.5); border: 2px solid var(--line); border-radius: 12px;
+  padding: 8px 10px; display: flex; flex-direction: column; gap: 2px;
+}
+.tier-tab b { font-size: 14px; }
+.tier-tab small { font-size: 11px; color: var(--muted); letter-spacing: 0.04em; }
+.tier-tab[aria-selected="true"] { border-color: var(--laser); background: rgba(95, 242, 255, 0.12); }
+.tier-tab.locked { opacity: 0.6; }
+.tier-blurb { margin: 0; color: var(--muted); font-size: 14px; line-height: 1.45; }
+.lessons { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.lesson {
+  width: 100%; display: grid; grid-template-columns: 40px minmax(0, 1fr) auto; align-items: center; gap: 12px;
+  text-align: left; font-family: var(--body); color: var(--star); cursor: pointer;
+  background: rgba(30, 34, 90, 0.45); border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px;
+}
+.lesson:hover:not(:disabled) { border-color: var(--laser); }
+.lesson:disabled { cursor: not-allowed; opacity: 0.5; }
+.lesson.next { border: 2px solid var(--hull); background: rgba(255, 201, 74, 0.08); }
+.lesson .code { font-family: var(--display); font-size: 15px; color: var(--laser); text-align: center; }
+.lesson .ltxt { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.lesson .ltxt b { font-size: 15px; }
+.lesson .ltxt small { font-size: 12px; color: var(--muted); overflow-wrap: anywhere; }
+.lesson .lstat { font-size: 13px; white-space: nowrap; }
+.lesson .go { color: var(--hull); font-weight: 700; }
+.lesson .lock { color: var(--muted); }
+.lstars { color: var(--hull); letter-spacing: 2px; font-size: 16px; }
+.lstars .dim { color: rgba(150, 160, 255, 0.25); }
+.goal { margin: 0; font-size: 13px; color: var(--muted); line-height: 1.45; }
+.goal b { color: var(--star); }
+#skillStart { font-size: 17px; }
+.checks { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.check { background: rgba(30, 34, 90, 0.5); border: 2px solid var(--line); border-radius: 12px; padding: 12px 14px; min-width: 0; }
+.check.ok { border-color: rgba(125, 255, 176, 0.55); }
+.check.no { border-color: rgba(255, 93, 115, 0.6); }
+.check .lbl { font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--muted); }
+.check .val { font-family: var(--display); font-size: 26px; font-variant-numeric: tabular-nums; }
+.check.ok .val { color: var(--good); }
+.check.no .val { color: var(--danger); }
+.check .goal-line { font-size: 12px; color: var(--muted); }
+.starlist { list-style: none; margin: -6px 0 0; padding: 0; display: flex; flex-direction: column; gap: 4px; font-size: 14px; color: var(--muted); }
+.starlist li::before { content: "☆"; margin-right: 8px; color: rgba(150, 160, 255, 0.5); }
+.starlist li.got { color: var(--star); }
+.starlist li.got::before { content: "★"; color: var(--hull); }
+
 @media (max-height: 560px) {
   .card { gap: 12px; }
   .logo { font-size: 32px; }
@@ -230,7 +293,7 @@ legend { font-size: 12px; letter-spacing: 0.14em; text-transform: uppercase; col
     <div class="stats">
       <div class="stat"><span class="lbl">WPM</span><span class="val" id="wpm">–</span></div>
       <div class="stat"><span class="lbl">Score</span><span class="val" id="score">0</span></div>
-      <div class="stat"><span class="lbl">Level</span><span class="val" id="level">1</span></div>
+      <div class="stat"><span class="lbl" id="levelLbl">Level</span><span class="val" id="level">1</span></div>
       <div class="stat"><span class="lbl" id="toBossLbl">Boss</span><span class="val" id="toBoss">12 left</span></div>
       <div class="stat"><span class="lbl">Streak</span><span class="val" id="streak">0</span></div>
       <div class="stat"><span class="lbl">Shields</span><span class="shields" id="shields"><i></i><i></i><i></i></span></div>
@@ -248,6 +311,11 @@ legend { font-size: 12px; letter-spacing: 0.14em; text-transform: uppercase; col
   <div class="overlay" id="menu">
     <div class="card">
       <h1 class="logo">Starship <span>Typer</span></h1>
+      <div class="modes" role="tablist" aria-label="Game mode">
+        <button class="mode-tab" id="tab-arcade" type="button" role="tab" aria-selected="true"><b>Arcade</b><small>Blast asteroids and bosses across 10 levels</small></button>
+        <button class="mode-tab" id="tab-skill" type="button" role="tab" aria-selected="false"><b>Skill Build</b><small>Learn to type step by step, from Beginner to Expert</small></button>
+      </div>
+      <div class="panel" id="arcadePanel">
       <p class="lede">Asteroids are flying at your ship! Type what's written on each one to blast it before it hits you. Each of the 10 levels ends with a boss ship: spell its word to beat it, but every wrong key makes it charge closer! Wrong keys also cost points. On Medium and Hard, fiery comets streak in fast: blast them quickly for double points. Watch for Mega bosses on levels 3, 6 and 9, and the Ultra boss waiting on level 10.</p>
       <fieldset>
         <legend>What do you want to practice?</legend>
@@ -282,7 +350,23 @@ legend { font-size: 12px; letter-spacing: 0.14em; text-transform: uppercase; col
         <span class="hint">or press Enter</span>
       </div>
       <div class="best" id="menuBest"></div>
+      </div>
+      <div class="panel" id="skillPanel" hidden>
+        <p class="lede">Build your typing skills one step at a time. Each lesson starts with calm practice on a few new keys, then a short mission to test them. Pass a lesson to unlock the next one.</p>
+        <div class="tiers" id="tierTabs" role="tablist" aria-label="Skill levels"></div>
+        <p class="tier-blurb" id="tierBlurb"></p>
+        <ol class="lessons" id="lessonList"></ol>
+        <p class="goal" id="tierGoal"></p>
+        <div class="row">
+          <button class="btn" id="skillStart" type="button">Start</button>
+          <span class="hint">or press Enter</span>
+        </div>
+      </div>
     </div>
+  </div>
+
+  <div class="overlay" id="skillResult" hidden>
+    <div class="card" id="skillCard"></div>
   </div>
 
   <div class="overlay" id="pause" hidden>
@@ -434,7 +518,7 @@ legend { font-size: 12px; letter-spacing: 0.14em; text-transform: uppercase; col
   };
   // Every point earned is scaled by the chosen keys, speed and challenge.
   const POINT_MULT = {
-    lesson: { home: 1, top: 1.1, bottom: 1.2, all: 1.5 },
+    lesson: { home: 1, top: 1.1, bottom: 1.2, all: 1.5, skill: 1 },
     speed: { cadet: 1, pilot: 1.25, ace: 1.5 },
     difficulty: { easy: 1, medium: 1.5, hard: 2, ludicrous: 3 },
   };
@@ -499,6 +583,7 @@ legend { font-size: 12px; letter-spacing: 0.14em; text-transform: uppercase; col
   const ULTRA_CORES = ["255,93,115", "170,120,255", "95,242,255"]; // core changes color each phase
   // Keys after the letters (and the whole last row) only show in Hard.
   const ROWS = [
+    [..."1234567890"],
     [..."qwertyuiop", "-"],
     [..."asdfghjkl", ";", "'"],
     [..."zxcvbnm", ",", ".", "/", "?"],
@@ -508,7 +593,8 @@ legend { font-size: 12px; letter-spacing: 0.14em; text-transform: uppercase; col
   // Which finger presses each key: 0 pinky, 1 ring, 2 middle, 3 index (mirrored per hand), 4 thumb
   const FINGER = { q:0,a:0,z:0, w:1,s:1,x:1, e:2,d:2,c:2, r:3,f:3,v:3,t:3,g:3,b:3,
                    y:3,h:3,n:3,u:3,j:3,m:3, i:2,k:2, o:1,l:1, p:0,
-                   "-":0, ";":0, "'":0, ",":2, ".":1, "/":0, "?":0, "!":0, " ":4 };
+                   "-":0, ";":0, "'":0, ",":2, ".":1, "/":0, "?":0, "!":0, " ":4,
+                   1:0, 2:1, 3:2, 4:3, 5:3, 6:3, 7:3, 8:2, 9:1, 0:0 };
   const keyLabel = (c) => (c === " " ? "Space" : c === "shift" ? "Shift" : /[A-Z]/.test(c) ? "⇧" + c : c.toUpperCase());
   // ---- Capital letters add-on: case is enforced only when it's switched on.
   const capsOn = () => !!settings.caps;
@@ -572,7 +658,7 @@ legend { font-size: 12px; letter-spacing: 0.14em; text-transform: uppercase; col
   const keyEls = {};
   const keysWrap = $("#keys");
   ROWS.forEach((row, ri) => {
-    const r = document.createElement("div"); r.className = "kb-row";
+    const r = document.createElement("div"); r.className = "kb-row" + (ri === 0 ? " num-row" : "");
     row.forEach((k) => {
       const b = document.createElement("button");
       b.type = "button"; b.className = "key"; b.textContent = keyLabel(k);
@@ -604,16 +690,19 @@ legend { font-size: 12px; letter-spacing: 0.14em; text-transform: uppercase; col
   }
   function refreshKeyLesson() {
     const set = LESSONS[settings.lesson];
-    keysWrap.classList.toggle("syms", symbolsOn());
-    keysWrap.classList.toggle("spacebar", sentenceMode());
+    const skill = skillLesson !== null; // Skill Build: light up exactly the keys learned so far
+    keysWrap.classList.toggle("syms", skill ? [...set].some((c) => SYMS.includes(c)) : symbolsOn());
+    keysWrap.classList.toggle("nums", skill && /[0-9]/.test(set));
+    keysWrap.classList.toggle("spacebar", skill || sentenceMode());
     keysWrap.classList.toggle("caps", capsOn());
     shiftArmed = false; paintKeyLabels();
-    for (const k in keyEls) keyEls[k].classList.toggle("off", !(set.includes(k) || (symbolsOn() && SYMS.includes(k)) || (k === " " && sentenceMode()) || (k === "shift" && capsOn())));
+    for (const k in keyEls) keyEls[k].classList.toggle("off", !(set.includes(k) || (!skill && symbolsOn() && SYMS.includes(k)) || (k === " " && (skill || sentenceMode())) || (k === "shift" && capsOn())));
     if (W) resize();
   }
   function updateLiveKeys() {
     let live;
-    if (G && G.boss && G.phase === "boss") live = [G.boss.word[G.boss.idx]];
+    if (G && G.phase === "drill") live = G.drill.idx < G.drill.text.length ? [G.drill.text[G.drill.idx]] : [];
+    else if (G && G.boss && G.phase === "boss") live = [G.boss.word[G.boss.idx]];
     else if (G && G.lock) live = [G.lock.text[G.lock.typed]];
     else live = G ? G.rocks.map((r) => r.text[0]) : [];
     const urgentRaw = G && G.phase === "rocks" ? G.comets.map((c) => c.ch) : [];
@@ -636,7 +725,7 @@ legend { font-size: 12px; letter-spacing: 0.14em; text-transform: uppercase; col
   }
 
   // ---------- World ----------
-  let W = 0, H = 0, playH = 0, DPR = 1, scale = 1;
+  let W = 0, H = 0, playH = 0, DPR = 1, scale = 1, hudBottom = 60;
   const ship = { x: 0, y: 0, angle: -Math.PI / 2, r: 22, wobble: 0 };
   let stars = [], particles = [], lasers = [], texts = [], shake = 0;
   let G = null;
@@ -654,6 +743,7 @@ legend { font-size: 12px; letter-spacing: 0.14em; text-transform: uppercase; col
     cv.width = Math.round(W * DPR); cv.height = Math.round(H * DPR);
     ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
     playH = H - keysWrap.getBoundingClientRect().height;
+    hudBottom = Math.min(160, $("#hud").getBoundingClientRect().bottom || 60);
     ship.x = W / 2;
     ship.y = Math.max(140, 60 + (playH - 60) * 0.55);
     scale = Math.min(1.25, Math.max(0.55, Math.hypot(W, playH) / 900));
@@ -705,6 +795,7 @@ legend { font-size: 12px; letter-spacing: 0.14em; text-transform: uppercase; col
 
   // What's written on an asteroid depends on the Challenge setting (and the special-characters add-on).
   function makeRockText() {
+    if (G && G.skill) return skillRockText();
     const t = baseRockText();
     if (!capsOn()) return t;
     if (t.length === 1) return /[a-z]/.test(t) && Math.random() < 0.4 ? t.toUpperCase() : t;
@@ -772,6 +863,7 @@ legend { font-size: 12px; letter-spacing: 0.14em; text-transform: uppercase; col
 
   function handleLetter(k) {
     if (mode !== "play" || !G || G.dying) return;
+    if (G.phase === "drill") return drillLetter(k);
     if (G.phase === "boss") return bossLetter(k);
     if (G.phase !== "rocks") return;
     if (k === " ") return; // asteroids never need a space; ignore it without a penalty
@@ -829,7 +921,7 @@ legend { font-size: 12px; letter-spacing: 0.14em; text-transform: uppercase; col
     texts.push({ x: r.x, y: r.y, s: "+" + pts, color: mult > 1 ? "#ffc94a" : "#eef0ff", life: 0.9, max: 0.9 });
     sfx.boom();
     G.levelHits++;
-    if (G.levelHits >= ROCKS_PER_LEVEL) startBossWarning();
+    if (G.levelHits >= rocksNeeded()) startBossWarning();
     else if (!G.rocks.length) G.spawnT = Math.min(G.spawnT, 0.5);
     updateHud(); updateLiveKeys();
   }
@@ -863,7 +955,7 @@ legend { font-size: 12px; letter-spacing: 0.14em; text-transform: uppercase; col
 
   // ---------- Boss ----------
   function startBossWarning() {
-    const kind = bossKind(G.level), info = BOSS_INFO[kind];
+    const kind = curBossKind(), info = BOSS_INFO[kind];
     G.phase = "clearing";
     G.phaseT = kind === "normal" ? 1.9 : 2.6;
     G.rocks.forEach((r) => burst(r.x, r.y, `hsl(${r.hue},30%,70%)`, 14, 140));
@@ -888,6 +980,7 @@ legend { font-size: 12px; letter-spacing: 0.14em; text-transform: uppercase; col
   }
 
   function pickWords(kind) {
+    if (G.skill) return skillBossWords(kind);
     const n = BOSS_INFO[kind].words;
     let list, start, span;
     if (isLudicrous()) {
@@ -937,7 +1030,7 @@ legend { font-size: 12px; letter-spacing: 0.14em; text-transform: uppercase; col
   }
 
   function spawnBoss() {
-    const kind = bossKind(G.level);
+    const kind = curBossKind();
     const words = pickWords(kind);
     G.boss = { kind, words, wi: 0, word: words[0], idx: 0, p: 0, enter: 0, time: wordTime(words[0], 0),
                lungeLeft: 0, flash: 0, hurt: 0, mistakes: 0, t: 0, letters: words.join("").length };
@@ -1042,6 +1135,12 @@ legend { font-size: 12px; letter-spacing: 0.14em; text-transform: uppercase; col
     sfx.bigBoom();
     G.boss = null;
     const game = G;
+    if (G.skill) {
+      G.phase = "won"; G.winning = 2.2;
+      setTimeout(() => { if (G === game) { showBanner("Mission complete!", escapeHtml(G.skill.L.name)); sfx.level(); } }, 450);
+      updateHud();
+      return;
+    }
     if (b.kind === "ultra") {
       G.phase = "won";
       G.winning = 3.2;
@@ -1104,6 +1203,7 @@ legend { font-size: 12px; letter-spacing: 0.14em; text-transform: uppercase; col
     const busy = new Set(G.rocks.map((r) => lc(r.text[0])));
     if (G.lock) busy.add(lc(G.lock.text[G.lock.typed]));
     G.comets.forEach((c) => busy.add(lc(c.ch)));
+    if (G.skill) return skillCometChar(busy);
     let pool = [...LESSONS[settings.lesson]];
     if (symbolsOn() && Math.random() < (isLudicrous() ? 0.4 : 0.25)) pool = SYMS.slice();
     const free = pool.filter((c) => !busy.has(c));
@@ -1119,14 +1219,14 @@ legend { font-size: 12px; letter-spacing: 0.14em; text-transform: uppercase; col
     if (side < 0.4) { x = 30 + Math.random() * (W - 60); y = -30; }
     else if (side < 0.7) { x = -30; y = 80 + Math.random() * Math.max(10, playH * 0.5); }
     else { x = W + 30; y = 80 + Math.random() * Math.max(10, playH * 0.5); }
-    const time = COMET_TIME[settings.speed] * COMETS[settings.difficulty].speedUp * Math.max(0.75, 1 - (G.level - 1) * 0.03);
+    const time = COMET_TIME[settings.speed] * (G.skill ? G.skill.comets : COMETS[settings.difficulty]).speedUp * Math.max(0.75, 1 - (G.level - 1) * 0.03);
     const dx = ship.x - x, dy = ship.y - y, dist = Math.hypot(dx, dy);
     G.comets.push({ ch, x, y, vx: (dx / dist) * dist / time, vy: (dy / dist) * dist / time, warn: COMET_WARN, warned: false });
     updateLiveKeys();
   }
 
   function updateComets(dt) {
-    const cfg = COMETS[settings.difficulty];
+    const cfg = G.skill ? G.skill.comets : COMETS[settings.difficulty];
     if (!cfg) return;
     if (G.level >= cfg.fromLevel) {
       G.cometT -= dt;
@@ -1181,8 +1281,15 @@ legend { font-size: 12px; letter-spacing: 0.14em; text-transform: uppercase; col
   function update(dt) {
     G.t += dt;
     if (!G.dying && (G.phase === "rocks" || (G.phase === "boss" && G.boss && G.boss.enter >= 1))) G.typeT += dt;
+    if (G.phase === "drill" && G.drill.started && !G.drill.done) G.typeT += dt;
     G.wpmT -= dt;
     if (G.wpmT <= 0) { G.wpmT = 0.5; paintWpm(); }
+    if (G.phase === "drill") {
+      // Calm practice: nothing attacks. Park the ship low so the text box has room.
+      G.drill.flash = Math.max(0, G.drill.flash - dt);
+      ship.y = Math.max(140, playH - 78);
+      return;
+    }
     if (G.dying) {
       G.dying -= dt;
       if (G.dying <= 0) { G.dying = 0; gameOver(); }
@@ -1192,7 +1299,7 @@ legend { font-size: 12px; letter-spacing: 0.14em; text-transform: uppercase; col
     if (G.phase === "clearing") { G.phaseT -= dt; if (G.phaseT <= 0) spawnBoss(); return; }
     if (G.phase === "boss") { if (G.boss) updateBoss(dt); return; }
     const sp = SPEEDS[settings.speed];
-    const maxRocks = Math.min(3 + G.level, 9);
+    const maxRocks = G.skill ? G.skill.maxRocks : Math.min(3 + G.level, 9);
     G.spawnT -= dt;
     if (G.spawnT <= 0 && G.rocks.length < maxRocks) {
       spawnRock();
@@ -1576,7 +1683,7 @@ legend { font-size: 12px; letter-spacing: 0.14em; text-transform: uppercase; col
       ctx.setLineDash && ctx.setLineDash([]);
     }
     // text (always upright): single letters in capitals, groups and words as typed
-    const single = r.text.length === 1 && /[a-z]/.test(r.text) && !capsOn();
+    const single = r.text.length === 1 && /[a-z]/.test(r.text) && !capsOn() && !G.skill;
     const shown = single ? r.text.toUpperCase() : r.text;
     const size = single ? r.r * 1.05 : Math.min(r.r * 0.8, (r.r * 1.75) / (shown.length * 0.56));
     ctx.font = `700 ${Math.round(size)}px "Atkinson Hyperlegible", Verdana, sans-serif`;
@@ -1668,7 +1775,7 @@ legend { font-size: 12px; letter-spacing: 0.14em; text-transform: uppercase; col
     ctx.restore();
 
     // the word or sentence, above the ship (sentences wrap onto several lines on narrow screens)
-    const text = settings.difficulty === "easy" && !capsOn() ? b.word.toUpperCase() : b.word;
+    const text = settings.difficulty === "easy" && !capsOn() && !G.skill ? b.word.toUpperCase() : b.word;
     const sentence = text.includes(" ");
     const maxW = Math.min(W - 48, 760);
     const size = Math.round(Math.max(20, Math.min(sentence ? 34 : 42, maxW / (text.length * (sentence ? 0.56 : 0.78)))));
@@ -1741,7 +1848,7 @@ legend { font-size: 12px; letter-spacing: 0.14em; text-transform: uppercase; col
 
   function drawComets(t) {
     for (const c of G.comets) {
-      const label = /[a-z]/.test(c.ch) && !capsOn() ? c.ch.toUpperCase() : c.ch;
+      const label = /[a-z]/.test(c.ch) && !capsOn() && !G.skill ? c.ch.toUpperCase() : c.ch;
       const tag = charTag(c.ch);
       if (c.warn > 0) {
         // warning marker at the screen edge where it will come from: steady (no strobing) so the
@@ -1815,17 +1922,629 @@ legend { font-size: 12px; letter-spacing: 0.14em; text-transform: uppercase; col
     ctx.globalAlpha = 1;
   }
 
+  // ======================= SKILL BUILD MODE =======================
+  // Four tiers of short lessons. Each lesson = calm practice drill, then a short mission.
+  // Pass the practice targets and win the mission to unlock the next lesson.
+  const TIERS = [
+    { id: "beginner", name: "Beginner", code: "B", acc: 90, wpm: 5, speed: "cadet", style: "easy", rocks: 10, maxRocks: 3, biome: 0, len: 48,
+      blurb: "Home row first, then your first reaches up to E, I, R and U." },
+    { id: "intermediate", name: "Intermediate", code: "I", acc: 92, wpm: 15, speed: "cadet", style: "medium", rocks: 12, maxRocks: 4, biome: 2, len: 70,
+      blurb: "The rest of the alphabet, real words, and capital letters." },
+    { id: "advanced", name: "Advanced", code: "A", acc: 95, wpm: 25, speed: "pilot", style: "medium", rocks: 14, maxRocks: 4, biome: 5, len: 90,
+      blurb: "Punctuation and the number row, in full sentences." },
+    { id: "expert", name: "Expert", code: "E", acc: 97, wpm: 40, speed: "ace", style: "hard", rocks: 16, maxRocks: 5, biome: 8, len: 120,
+      comets: { gap: [7, 11], max: 1, fromLevel: 1, speedUp: 1 },
+      blurb: "Top speed with everything mixed together, plus comets in every mission." },
+  ];
+  const SKILL_LESSONS = [
+    { tier: 0, name: "F and J", add: "fj", kind: "keys", tip: "Find the little bumps on F and J. Rest your index fingers there." },
+    { tier: 0, name: "D and K", add: "dk", kind: "keys", tip: "Your middle fingers rest on D and K." },
+    { tier: 0, name: "S and L", add: "sl", kind: "keys", tip: "Your ring fingers rest on S and L." },
+    { tier: 0, name: "A and ;", add: "a;", kind: "keys", tip: "Your pinkies rest on A and the semicolon." },
+    { tier: 0, name: "G and H", add: "gh", kind: "keys", tip: "Stretch your index fingers one key toward the middle, then come back." },
+    { tier: 0, name: "Home row review", add: "", kind: "review", tip: "Keep your fingers on the home row and your eyes on the screen." },
+    { tier: 0, name: "E and I", add: "ei", kind: "keys", tip: "Reach up with your middle fingers, then come back home." },
+    { tier: 0, name: "R and U", add: "ru", kind: "keys", tip: "Reach up and in with your index fingers." },
+    { tier: 0, name: "Beginner review", add: "", kind: "review", boss: "mega", tip: "Real words using every key you've learned so far." },
+    { tier: 1, name: "T and Y", add: "ty", kind: "keys", tip: "Index fingers reach up and toward the middle." },
+    { tier: 1, name: "W and O", add: "wo", kind: "keys", tip: "Ring fingers reach up." },
+    { tier: 1, name: "Q and P", add: "qp", kind: "keys", tip: "Pinkies reach up. Keep your other fingers home." },
+    { tier: 1, name: "Top row review", add: "", kind: "review", tip: "Words that use the home row and the top row." },
+    { tier: 1, name: "V and M", add: "vm", kind: "keys", tip: "Index fingers reach down." },
+    { tier: 1, name: "B and N", add: "bn", kind: "keys", tip: "Index fingers reach down and toward the middle." },
+    { tier: 1, name: "C and X", add: "cx", kind: "keys", tip: "Left middle and ring fingers reach down." },
+    { tier: 1, name: "Z", add: "z", kind: "keys", tip: "Your left pinky reaches down to Z." },
+    { tier: 1, name: "All the letters", add: "", kind: "review", tip: "Every letter of the alphabet, in real words." },
+    { tier: 1, name: "Capital letters", add: "", caps: true, kind: "caps", boss: "mega", tip: "Hold Shift with the pinky on the other hand, then press the letter." },
+    { tier: 2, name: "Period and comma", add: ".,", kind: "sentences", tip: "Comma is your right middle finger. Period is your right ring finger." },
+    { tier: 2, name: "Apostrophe and slash", add: "'/", kind: "sentences", tip: "Both use your right pinky." },
+    { tier: 2, name: "! ? and -", add: "!?-", kind: "sentences", tip: "! and ? need Shift. The dash sits to the right of the 0 key." },
+    { tier: 2, name: "Numbers 1 to 5", add: "12345", kind: "numbers", tip: "Your left hand reaches up two rows from home." },
+    { tier: 2, name: "Numbers 6 to 0", add: "67890", kind: "numbers", tip: "Your right hand reaches up two rows from home." },
+    { tier: 2, name: "Advanced review", add: "", kind: "sentences", boss: "mega", tip: "Sentences with punctuation and numbers." },
+    { tier: 3, name: "Speed words", add: "", kind: "review", tip: "Smooth and steady beats fast and sloppy." },
+    { tier: 3, name: "Sentence sprint", add: "", kind: "sentences", tip: "Keep your eyes on the next word, not the one you just typed." },
+    { tier: 3, name: "Numbers and symbols", add: "", kind: "mixed", tip: "Mix numbers, symbols and words without slowing down." },
+    { tier: 3, name: "Gibberish gauntlet", add: "", kind: "gibberish", tip: "No words to help you here. Read every single key." },
+    { tier: 3, name: "Final exam", add: "", kind: "sentences", boss: "ultra", long: true, tip: "Everything you've learned. Show the galaxy what you can do!" },
+  ];
+  const WORD_BANK = `a as ad add ads all ask asks dad dads sad fad gas has had hall halls half lad lads lag sag flag flags glad glass
+    dash gash lash slash flask salad salsa shall alas falls fall jag
+    he she sea see seed feed lake desk disk fish dish kid kids lid lids file lies dig did aid said fig ash leaf deal heal seal sail fail
+    slid skid sled fled shed hike like idea field shield dial glide slide
+    red rid ride rise sure fire hire dark hard shark lure fur rush rule ruler sugar drag flare hurl laser rails radar jar jars hug huge
+    glue duke fuel guide user ears rare free fresh grid hug figure
+    the they that this try yes yet toy tray stray tree trees star stars start first light flight fly sky dry fast last test their eat
+    great east salt hat yard style story
+    word world work wow we who how low slow look door floor go good old too two tower water power row show glow otter away today
+    store jolly follow yellow hello
+    quiet quest quite quilt quote pipe pilot pet pie pop top stop trip super puppy happy help keep deep sleep speed ship spy slip drop
+    paper pool pour
+    move moon more mars map make time home mom me my vote very visit love five dive drive live give dream storm team game metal
+    meteor steam smile math
+    bed big bag bat best blue boat book ban and an in on no not nine ten one seven planet orbit robot brain brave bread night bright
+    noon neptune button rainbow bubble banana number under only sun fun run spin send land hand wind
+    cat can cake cold cool comet crew crater rocket space spaceship launch catch clock count fox box six fix mix next exit taxi extra
+    explore excited galaxy
+    zoo zoom zap zero zip zigzag lazy pizza puzzle fizz buzz jazz dizzy cozy blaze frozen zone wizard breeze quiz maze
+    astronaut jupiter saturn venus earth alien aliens asteroid satellite telescope universe gravity captain shuttle helmet engine
+    oxygen journey mission station voyage kitten dragon castle garden jungle monkey turtle penguin school friend family music picture
+    purple orange silver golden quick jump brown dog over above below around because people sound small large smart kind funny`
+    .split(/\s+/).filter(Boolean);
+  const SENTENCE_BANK = [
+    "The ship is ready to fly.", "We zoom past the moon.", "Look, a comet.", "Stars shine at night.",
+    "The crew is ready, so we go.", "Mars is red, and the sky is dark.", "My robot can dance.", "Jupiter has many moons.",
+    "Fuel up, then blast off.", "The aliens wave at us.", "Space is very quiet.", "The sun is a star.", "Hold on, pilot.",
+    "We land on a frozen planet.", "Pack your helmet, your map, and a snack.", "The captain smiles; the crew cheers.",
+    "Venus is hot, but Neptune is cold.", "A quiet fox looks up at the sky.",
+    "It's time to fly.", "Don't press the red button.", "The ship's lights are on.", "We're on our way to Saturn.",
+    "You can walk and/or fly.", "I can't wait to land.", "Let's count the stars.", "The robot's name is Bolt.",
+    "Pick a side, left/right.", "That's a huge crater.",
+    "Watch out!", "Where is the moon?", "Blast off!", "Is that an alien?", "My space-suit fits!", "Do you see the comet?",
+    "Wow, a two-headed alien!", "Go, go, go!", "Can robots dream?", "Ready, set, launch!", "Who left the hatch open?",
+    "The x-ray shows a tiny moon-bug!",
+    "We saw 3 comets.", "The ship has 4 engines.", "Only 2 robots are awake.", "Grab 5 snacks for the trip.",
+    "Room 12 is the robot lab.", "Launch in 5, 4, 3, 2, 1!", "Is it 4 or 5 o'clock?", "We need 3 more minutes!",
+    "It took 90 days to reach Mars.", "The robot is 7 years old.", "There are 8 planets.", "Count down from 10 to 1.",
+    "Our rocket flew 600 miles!", "Pack 6 maps and 9 snacks.", "We waited 60 seconds; then we jumped.",
+    "The captain said, 'Hold steady, we're almost home!'", "Can you type 3 sentences in under 1 minute? Let's find out!",
+    "Quick! The asteroid field is 12 miles wide, so steer left.", "Our ship's robot, Bolt, can juggle 5 moon rocks at once.",
+    "Zoom past Jupiter, wave to Saturn, then land on Mars.", "If a comet zips by at 90 miles per second, type fast!",
+    "The jazzy aliens played 4 songs; we danced all night.", "Pack 6 snacks, 2 maps and 1 very brave pilot.",
+    "Is the sky purple on planet X-7? Nobody knows!", "Twelve robots, 3 kittens and a llama walked onto the ship.",
+    "Don't panic; the black hole is 200 miles away.", "We'll need 8 helmets, 4 boots and a very long ladder.",
+  ];
+  const PUNCT_WORDS = {
+    "'": ["it's", "don't", "can't", "we're", "let's", "that's", "you're", "won't", "isn't"],
+    "/": ["and/or", "yes/no", "up/down", "left/right", "on/off", "day/night"],
+    "-": ["x-ray", "t-rex", "co-pilot", "blast-off", "re-do", "high-five", "space-suit"],
+  };
+  const LEFT_KEYS = new Set([..."qwertasdfgzxcvb12345!"]);
+  const FINGER_NAMES = ["pinky", "ring finger", "middle finger", "index finger", "thumb"];
+
+  // Precompute every lesson's id (B1, I3, ...), cumulative keys and whether capitals are enforced.
+  const LESSON_INFO = (() => {
+    const known = new Set(), count = [0, 0, 0, 0];
+    let caps = false;
+    return SKILL_LESSONS.map((L, i) => {
+      [...L.add].forEach((c) => known.add(c));
+      if (L.caps) caps = true;
+      const id = TIERS[L.tier].code + ++count[L.tier];
+      const knownArr = [...known];
+      return { ...L, i, id, caps, fresh: [...L.add], known: knownArr, knownSet: new Set(knownArr),
+               letters: knownArr.filter((c) => /[a-z]/.test(c)) };
+    });
+  })();
+  const SKILL_KEY = "st-skill";
+  let skillLesson = null, arcadeBackup = null, skillRun = null, menuTier = null;
+  let menuMode = store.get("st-mode", "arcade") === "skill" ? "skill" : "arcade";
+  const rnd = (n) => (Math.random() * n) | 0;
+  const shuffled = (a) => { a = a.slice(); for (let i = a.length - 1; i > 0; i--) { const j = rnd(i + 1); [a[i], a[j]] = [a[j], a[i]]; } return a; };
+
+  // Does this text only use keys the player has learned by this lesson?
+  const fits = (L, s) => [...s].every((c) => c === " " || (L.knownSet.has(lc(c)) && (c === lc(c) || L.caps)));
+  const wordCache = new Map();
+  function wordsFor(L) {
+    if (!wordCache.has(L.i)) wordCache.set(L.i, WORD_BANK.filter((w) => fits(L, w)));
+    return wordCache.get(L.i);
+  }
+  function sentencesFor(L) {
+    let ss = SENTENCE_BANK.filter((s) => fits(L, s));
+    if (L.fresh.length) {
+      const fr = ss.filter((s) => [...s].some((c) => L.fresh.includes(lc(c))));
+      if (fr.length >= 3) ss = fr;
+    }
+    return ss;
+  }
+  function mixGroup(fresh, known, len) {
+    const pools = [...new Set(fresh.concat(known))];
+    let s = "", guard = 0;
+    while (s.length < len && guard++ < 100) {
+      const c = Math.random() < 0.55 ? pick(fresh) : pick(known);
+      if (pools.length > 1 && s.length >= 2 && s[s.length - 1] === c && s[s.length - 2] === c) continue;
+      s += c;
+    }
+    return s;
+  }
+  const caseSoft = (L, w) => (L.caps ? (Math.random() < 0.3 ? cap1(properCase(w)) : properCase(w)) : w);
+  const charCase = (L, c) => (L.caps && /[a-z]/.test(c) && Math.random() < 0.3 ? c.toUpperCase() : c);
+  function gibFrom(L, len) {
+    const pool = L.known.filter((c) => c !== " ");
+    let s = "";
+    while (s.length < len) { const c = charCase(L, pick(pool)); if (c !== s[s.length - 1]) s += c; }
+    return s;
+  }
+  function symToken(L, sym) {
+    const pw = (PUNCT_WORDS[sym] || []).filter((w) => fits(L, w));
+    if (PUNCT_WORDS[sym]) return pw.length && Math.random() < 0.8 ? pick(pw) : sym;
+    const ws = wordsFor(L).filter((w) => w.length <= 5);
+    return (ws.length ? caseSoft(L, pick(ws)) : pick(L.letters)) + sym;
+  }
+  function numberToken(L) {
+    const digs = L.known.filter((c) => /\d/.test(c));
+    if (!digs.length) return pick(L.letters);
+    let s = pick(digs.filter((d) => d !== "0").concat(digs.length === 1 ? digs : []));
+    const n = rnd(3);
+    for (let i = 0; i < n; i++) s += pick(digs);
+    return s;
+  }
+
+  // ---- Practice drill text ----
+  function makeDrillText(L) {
+    const T = TIERS[L.tier];
+    const target = Math.round(T.len * (L.long ? 1.4 : 1));
+    const parts = [];
+    let len = 0;
+    const push = (p) => { parts.push(p); len += p.length + 1; };
+    const letters = [...new Set(L.letters.concat(L.fresh))];
+    const words = wordsFor(L);
+    if (L.kind === "keys") {
+      L.fresh.forEach((c) => push(c.repeat(3)));
+      if (L.fresh.length > 1) for (let i = 0; i < 2; i++) push(mixGroup(L.fresh, L.fresh, 4));
+      const fw = words.filter((w) => w.length <= 6 && [...w].some((c) => L.fresh.includes(c)));
+      while (len < target) {
+        const p = fw.length >= 3 && Math.random() < 0.45 ? pick(fw) : mixGroup(L.fresh, letters, 3 + rnd(3));
+        if (p !== parts[parts.length - 1]) push(p);
+      }
+    } else if (L.kind === "review" || L.kind === "caps") {
+      const max = L.tier === 3 ? 9 : 7;
+      const ws = words.filter((w) => w.length <= max);
+      while (len < target) {
+        let w = ws.length >= 4 ? pick(ws) : mixGroup(letters, letters, 4);
+        if (L.kind === "caps") w = Math.random() < 0.6 ? cap1(properCase(w)) : properCase(w);
+        else w = caseSoft(L, w);
+        if (w !== parts[parts.length - 1]) push(w);
+      }
+    } else if (L.kind === "numbers") {
+      L.fresh.forEach((c) => push(c.repeat(3)));
+      push(mixGroup(L.fresh, L.fresh, 4));
+      const digs = L.known.filter((c) => /\d/.test(c));
+      const ws = words.filter((w) => w.length <= 6);
+      while (len < target) {
+        if (Math.random() < 0.55) push(mixGroup(L.fresh, digs, 2 + rnd(3)));
+        else { push(mixGroup(L.fresh, digs, 1 + rnd(2))); push(caseSoft(L, pick(ws))); }
+      }
+    } else if (L.kind === "sentences") {
+      const ss = shuffled(sentencesFor(L));
+      for (let k = 0; len < target; k++) push(ss[k % ss.length]);
+    } else if (L.kind === "mixed") {
+      while (len < target) push(mixedToken(L));
+    } else if (L.kind === "gibberish") {
+      while (len < target) push(gibFrom(L, 3 + rnd(4)));
+    }
+    return parts.join(" ");
+  }
+  function mixedToken(L) {
+    const r = Math.random();
+    const syms = L.known.filter((c) => SYMS.includes(c));
+    if (r < 0.25) return caseSoft(L, pick(wordsFor(L).filter((w) => w.length <= 7)));
+    if (r < 0.5) return numberToken(L);
+    if (r < 0.8 && syms.length) return symToken(L, pick(syms));
+    return cap1(pick(wordsFor(L).filter((w) => w.length <= 6)));
+  }
+
+  // ---- Mission content ----
+  function skillRockText() {
+    const S = G.skill, L = S.L;
+    const pool = L.known.filter((c) => c !== " ");
+    const fresh = L.fresh.length ? L.fresh : null;
+    const one = () => charCase(L, fresh && Math.random() < 0.6 ? pick(fresh) : pick(pool));
+    const words = S.words;
+    const fw = fresh ? words.filter((w) => [...w].some((c) => fresh.includes(c))) : words;
+    const word = (max) => {
+      let ws = (fw.length >= 3 ? fw : words).filter((w) => w.length <= max);
+      if (!ws.length) ws = words.filter((w) => w.length <= max);
+      return ws.length ? caseSoft(L, pick(ws)) : one();
+    };
+    if (L.kind === "gibberish") return gibFrom(L, 2 + rnd(3));
+    if (L.tier === 0) return L.kind === "review" && words.length && Math.random() < 0.35 ? word(4) : one();
+    if (L.tier === 1) {
+      const r = Math.random();
+      if (L.kind === "caps") return r < 0.4 ? pick(L.letters).toUpperCase() : cap1(properCase(word(5)));
+      if (r < 0.4) return one();
+      if (r < 0.65) return mixGroup(fresh || L.letters, L.letters, 2 + rnd(2));
+      return word(5);
+    }
+    const syms = L.known.filter((c) => SYMS.includes(c));
+    if (L.kind === "numbers") return Math.random() < 0.5 ? pick(fresh) : mixGroup(fresh, L.known.filter((c) => /\d/.test(c)), 2 + rnd(2));
+    const r = Math.random();
+    if (L.tier === 2) {
+      if (fresh && r < 0.35) return Math.random() < 0.4 ? pick(fresh) : symToken(L, pick(fresh));
+      if (r < 0.7) return word(6);
+      if (r < 0.85 && syms.length) return symToken(L, pick(syms));
+      return L.known.some((c) => /\d/.test(c)) ? numberToken(L) : word(5);
+    }
+    if (r < 0.35) return word(7);
+    if (r < 0.55) return numberToken(L);
+    if (r < 0.8 && syms.length) return symToken(L, pick(syms));
+    return cap1(word(6));
+  }
+  function skillCometChar(busy) {
+    const L = G.skill.L;
+    const free = L.known.filter((c) => c !== " " && !busy.has(lc(c)));
+    return free.length ? charCase(L, pick(free)) : null;
+  }
+  function skillBossWords(kind) {
+    const S = G.skill, L = S.L, n = BOSS_INFO[kind].words;
+    let cands;
+    if (L.kind === "gibberish") {
+      return Array.from({ length: n }, () => Array.from({ length: 3 + rnd(2) }, () => gibFrom(L, 2 + rnd(4))).join(" "));
+    }
+    if (L.tier >= 2 && L.kind !== "review") {
+      const ss = sentencesFor(L).slice().sort((a, b) => a.length - b.length);
+      const half = Math.max(n + 1, Math.ceil(ss.length / 2));
+      cands = kind === "normal" && L.tier === 2 ? ss.slice(0, half) : ss.slice(-half);
+    } else {
+      const ws = S.words.filter((w) => w.length >= 3);
+      const fr = L.fresh.length ? ws.filter((w) => [...w].some((c) => L.fresh.includes(c))) : ws;
+      cands = (fr.length > n ? fr : ws).slice().sort((a, b) => b.length - a.length).slice(0, 10);
+      if (cands.length <= n) {
+        const fresh = L.fresh.length ? L.fresh : L.letters;
+        cands = Array.from({ length: 6 }, () => [mixGroup(fresh, L.letters, 3), mixGroup(fresh, L.letters, 3)].join(" "));
+      }
+      cands = cands.map((w) => (L.kind === "caps" ? cap1(properCase(w)) : caseSoft(L, w)));
+    }
+    const fresh = shuffled(cands.filter((w) => !G.usedBoss.has(w)));
+    const out = fresh.slice(0, n);
+    while (out.length < n) out.push(pick(cands));
+    out.forEach((w) => G.usedBoss.add(w));
+    return out;
+  }
+
+  // ---- Settings swap: lessons borrow the Arcade engine with their own keys ----
+  function enterSkill(i) {
+    const L = LESSON_INFO[i], T = TIERS[L.tier];
+    if (!arcadeBackup) arcadeBackup = { ...settings };
+    Object.assign(settings, { lesson: "skill", speed: T.speed, difficulty: T.style,
+      symbols: L.known.some((c) => SYMS.includes(c)), caps: L.caps });
+    LESSONS.skill = L.known.join("");
+    skillLesson = i;
+    refreshKeyLesson();
+  }
+  function exitSkill() {
+    if (!arcadeBackup) return;
+    Object.assign(settings, arcadeBackup);
+    arcadeBackup = null; skillLesson = null;
+    refreshKeyLesson();
+  }
+  function makeSkillState(i) {
+    const L = LESSON_INFO[i], T = TIERS[L.tier];
+    return { L, T, code: L.id, rocks: T.rocks, maxRocks: T.maxRocks, comets: T.comets || null,
+             boss: L.boss || "normal", words: wordsFor(L) };
+  }
+  const curBossKind = () => (G && G.skill ? G.skill.boss : bossKind(G.level));
+  const rocksNeeded = () => (G && G.skill ? G.skill.rocks : ROCKS_PER_LEVEL);
+
+  // ---- Progress ----
+  const skillProgress = () => store.get(SKILL_KEY, {});
+  const passed = (i, prog) => !!(prog || skillProgress())[LESSON_INFO[i].id];
+  const unlocked = (i, prog) => i === 0 || passed(i - 1, prog);
+  function nextLessonIndex(prog) {
+    prog = prog || skillProgress();
+    for (let i = 0; i < LESSON_INFO.length; i++) if (!passed(i, prog)) return unlocked(i, prog) ? i : null;
+    return null;
+  }
+
+  // ---- Lesson flow ----
+  function startLesson(i) {
+    initAudio();
+    enterSkill(i);
+    newGame();
+    const L = LESSON_INFO[i], T = TIERS[L.tier];
+    G.skill = makeSkillState(i);
+    G.phase = "drill";
+    G.drill = { text: makeDrillText(L), idx: 0, correct: 0, errors: 0, flash: 0, started: false, done: false };
+    biome = prevBiome = T.biome; biomeFade = 1;
+    skillRun = { i, practice: null };
+    menuTier = L.tier;
+    mode = "play"; show(null);
+    updateHud(); updateLiveKeys();
+    showBanner(`${L.id} · ${L.name}`, "Practice: type the keys in the box");
+  }
+  function startMission() {
+    const i = skillRun.i, L = LESSON_INFO[i], T = TIERS[L.tier];
+    initAudio();
+    enterSkill(i);
+    resize();
+    newGame();
+    G.skill = makeSkillState(i);
+    G.spawnT = 1.8;
+    biome = prevBiome = T.biome; biomeFade = 1;
+    mode = "play"; show(null);
+    updateHud(); updateLiveKeys();
+    const bossTxt = G.skill.boss === "ultra" ? "the Ultra boss" : G.skill.boss === "mega" ? "the Mega boss" : "the boss";
+    showBanner("Mission!", `Blast ${G.skill.rocks} asteroids, then beat ${bossTxt}`);
+  }
+
+  function drillLetter(k) {
+    const d = G.drill;
+    if (d.done) return;
+    const need = d.text[d.idx];
+    d.started = true;
+    if (k === need) {
+      const lay = drillLayout();
+      const cx = lay.x0 + (d.idx - lay.start + 0.5) * lay.cell;
+      d.idx++; d.correct++;
+      G.hits++; G.streak++; G.bestStreak = Math.max(G.bestStreak, G.streak);
+      if (k !== " ") {
+        flashKey(k, "ok");
+        ship.angle = Math.atan2(lay.cy - ship.y, cx - ship.x);
+        const nx = ship.x + Math.cos(ship.angle) * 24, ny = ship.y + Math.sin(ship.angle) * 24;
+        lasers.push({ x1: nx, y1: ny, x2: cx, y2: lay.cy + lay.size * 0.6, life: 0.15, max: 0.15 });
+        burst(cx, lay.cy + lay.size * 0.5, "#7dffb0", 5, 70);
+        sfx.laser();
+      } else flashKey(" ", "ok");
+      G.score += award(5, 1);
+      if (d.idx >= d.text.length) finishDrill();
+    } else {
+      flashKey(k, "bad");
+      d.errors++; G.misses++; G.streak = 0; d.flash = 0.35;
+      G.leaked[need] = (G.leaked[need] || 0) + 1;
+      sfx.miss();
+    }
+    updateHud(); updateLiveKeys();
+  }
+
+  function fingerName(c) {
+    if (c === " ") return "either thumb";
+    const k = lc(c), f = FINGER[k];
+    if (f === undefined) return "";
+    const hand = LEFT_KEYS.has(k) ? "left" : "right";
+    let s = `${hand} ${FINGER_NAMES[f]}`;
+    if (/[A-Z!?]/.test(c)) s += ` + Shift (${hand === "left" ? "right" : "left"} pinky)`;
+    return s;
+  }
+  // Name keys the way they're printed on the keyboard (an "l" can look like an "I").
+  const keyName = (c) => (c === " " ? "Space" : SYM_NAMES[c] ? `${c}  (${SYM_NAMES[c]})` : /[A-Z]/.test(c) ? `Shift + ${c}` : c.toUpperCase());
+  function wrapLines(text, maxW) {
+    const words = text.split(" "), lines = [];
+    let line = "";
+    for (const w of words) {
+      const tryLine = line ? line + " " + w : w;
+      if (line && ctx.measureText(tryLine).width > maxW) { lines.push(line); line = w; } else line = tryLine;
+    }
+    if (line) lines.push(line);
+    return lines;
+  }
+
+  function drillLayout() {
+    const d = G.drill;
+    const size = Math.round(Math.max(24, Math.min(40, W / 20)));
+    const cell = size * 0.7;
+    const maxChars = Math.max(10, Math.floor((Math.min(W, 900) - 64) / cell));
+    let start = Math.max(0, d.idx - Math.floor(maxChars * 0.35));
+    start = Math.min(start, Math.max(0, d.text.length - maxChars));
+    const end = Math.min(d.text.length, start + maxChars);
+    const cy = Math.max(64, hudBottom) + 52 + size * 0.95; // clears the top bar, even when it wraps on phones
+    const x0 = W / 2 - ((end - start) * cell) / 2;
+    return { size, cell, start, end, cy, x0, maxChars };
+  }
+
+  function drawDrill(t) {
+    const d = G.drill, L = G.skill.L, T = G.skill.T;
+    const lay = drillLayout();
+    const pw = Math.max(260, (lay.end - lay.start) * lay.cell + 48), ph = lay.size * 1.9;
+    const px = W / 2 - pw / 2, py = lay.cy - ph / 2;
+    ctx.textAlign = "center"; ctx.textBaseline = "middle";
+    ctx.font = `400 13px "Bungee", "Arial Black", sans-serif`;
+    ctx.fillStyle = "#a8acd8";
+    ctx.fillText(`LESSON ${L.id} · PRACTICE`, W / 2, py - 40);
+    ctx.font = `700 20px "Atkinson Hyperlegible", Verdana, sans-serif`;
+    ctx.fillStyle = "#eef0ff";
+    ctx.fillText(L.name, W / 2, py - 18);
+    ctx.fillStyle = "rgba(8,10,34,0.8)";
+    ctx.strokeStyle = d.flash > 0 ? "rgba(255,93,115,0.95)" : "rgba(150,160,255,0.35)";
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    if (ctx.roundRect) ctx.roundRect(px, py, pw, ph, 16); else ctx.rect(px, py, pw, ph);
+    ctx.fill(); ctx.stroke();
+    ctx.font = `700 ${lay.size}px "Atkinson Hyperlegible", Verdana, sans-serif`;
+    for (let i = lay.start; i < lay.end; i++) {
+      const c = d.text[i];
+      const cx = lay.x0 + (i - lay.start + 0.5) * lay.cell;
+      const edge = (i - lay.start < 2 && lay.start > 0) || (lay.end - i <= 2 && lay.end < d.text.length);
+      ctx.globalAlpha = edge ? 0.35 : 1;
+      if (i === d.idx) {
+        ctx.fillStyle = d.flash > 0 ? "rgba(255,93,115,0.3)" : "rgba(255,201,74,0.2)";
+        ctx.fillRect(cx - lay.cell / 2 + 1, lay.cy - lay.size * 0.62, lay.cell - 2, lay.size * 1.24);
+        ctx.fillStyle = "#ffc94a";
+        ctx.fillRect(cx - lay.cell / 2 + 3, lay.cy + lay.size * 0.5, lay.cell - 6, 3 + Math.sin(t * 8));
+      }
+      const col = i < d.idx ? "rgba(125,255,176,0.85)" : i === d.idx ? (d.flash > 0 ? "#ff8a9a" : "#ffc94a") : "#ffffff";
+      ctx.fillStyle = col;
+      if (c === " ") {
+        ctx.globalAlpha *= i < d.idx ? 0.4 : 0.6;
+        ctx.beginPath(); ctx.arc(cx, lay.cy + 2, Math.max(2.5, lay.size * 0.08), 0, 6.28); ctx.fill();
+      } else ctx.fillText(c, cx, lay.cy + 2);
+      ctx.globalAlpha = 1;
+    }
+    // progress bar
+    const bw = Math.min(pw, 420), by = py + ph + 16;
+    ctx.fillStyle = "rgba(150,160,255,0.2)";
+    ctx.fillRect(W / 2 - bw / 2, by, bw, 6);
+    ctx.fillStyle = "#5ff2ff";
+    ctx.fillRect(W / 2 - bw / 2, by, bw * (d.idx / d.text.length), 6);
+    // next key and finger
+    const next = d.text[d.idx];
+    if (next !== undefined) {
+      ctx.font = `700 16px "Atkinson Hyperlegible", Verdana, sans-serif`;
+      ctx.fillStyle = "#eef0ff";
+      ctx.fillText(`Next: ${keyName(next)}  ·  ${fingerName(next)}`, W / 2, by + 30);
+    }
+    const acc = d.correct + d.errors ? Math.round((d.correct / (d.correct + d.errors)) * 100) : 100;
+    const wpm = G.typeT >= 3 ? Math.round(d.correct / 5 / (G.typeT / 60)) : null;
+    ctx.font = `400 14px "Atkinson Hyperlegible", Verdana, sans-serif`;
+    ctx.fillStyle = "#a8acd8";
+    ctx.fillText(`Accuracy ${acc}%  ·  ${wpm === null ? "–" : wpm} WPM   ·   Goal: ${T.acc}% · ${T.wpm} WPM`, W / 2, by + 54);
+    ctx.fillStyle = "#c9ccef";
+    wrapLines(`Tip: ${L.tip}`, Math.min(W - 40, 560)).forEach((ln, i) => ctx.fillText(ln, W / 2, by + 78 + i * 19));
+  }
+
+  function finishDrill() {
+    const d = G.drill, T = G.skill.T;
+    d.done = true;
+    const acc = Math.round((d.correct / Math.max(1, d.correct + d.errors)) * 100);
+    const wpm = Math.round(d.correct / 5 / (Math.max(G.typeT, 2) / 60));
+    const okA = acc >= T.acc, okW = wpm >= T.wpm;
+    skillRun.practice = { acc, wpm, passed: okA && okW };
+    mode = "skillres";
+    sfx.level();
+    const checks = [
+      { label: "Accuracy", value: acc + "%", ok: okA, goal: `${T.acc}%` },
+      { label: "Words / min", value: wpm, ok: okW, goal: `${T.wpm} WPM` },
+    ];
+    let o;
+    if (okA && okW) {
+      o = { title: "Practice complete!", cls: "win", lede: "Nice work. Now test your new keys in a short mission.", checks,
+            buttons: [{ label: "Start mission", act: "mission", primary: true }, { label: "Practice again", act: "drill" }, { label: "Lesson list", act: "list" }] };
+    } else {
+      const lede = !okA && !okW ? "Slow down a little and aim for the right key every time. Speed comes with practice."
+        : !okA ? "Slow down a little and aim for the right key every time."
+        : "Your aim is great! Now try to keep a steady rhythm without long pauses.";
+      o = { title: "Almost there!", lede, checks,
+            buttons: [{ label: "Try again", act: "drill", primary: true }, { label: "Lesson list", act: "list" }] };
+    }
+    o.practice = leakedHTML();
+    renderSkillCard(o);
+  }
+
+  function finishMission(won) {
+    mode = "skillres";
+    const S = G.skill, L = S.L, T = S.T, i = skillRun.i;
+    const total = G.hits + G.misses;
+    const macc = total ? Math.round((G.hits / total) * 100) + "%" : "–";
+    if (!won) {
+      renderSkillCard({ title: "Mission failed", lede: "Your practice still counts. Jump back into the mission when you're ready.",
+        results: [["Asteroids blasted", `${G.levelHits}/${S.rocks}`], ["Mission accuracy", macc]], practice: leakedHTML(),
+        buttons: [{ label: "Retry mission", act: "mission", primary: true }, { label: "Practice again", act: "drill" }, { label: "Lesson list", act: "list" }] });
+      return;
+    }
+    const p = skillRun.practice;
+    const speedGoal = Math.ceil(T.wpm * 1.3);
+    const speedStar = p.wpm >= speedGoal, shieldStar = G.shields >= 3;
+    const stars = 1 + (speedStar ? 1 : 0) + (shieldStar ? 1 : 0);
+    const prog = skillProgress();
+    const prev = prog[L.id] || { stars: 0, wpm: 0, acc: 0 };
+    prog[L.id] = { stars: Math.max(prev.stars, stars), wpm: Math.max(prev.wpm, p.wpm), acc: Math.max(prev.acc, p.acc) };
+    store.set(SKILL_KEY, prog);
+    const next = LESSON_INFO[i + 1];
+    let title = "Lesson complete!", lede = next ? `You unlocked ${next.id} · ${next.name}.` : "";
+    if (!next) { title = "You're a typing expert!"; lede = "You finished every Skill Build lesson. Amazing work, pilot!"; }
+    else if (next.tier !== L.tier) { title = `${T.name} complete!`; lede = `${TIERS[next.tier].name} is unlocked. First up: ${next.id} · ${next.name}.`; }
+    const starNote = `<ul class="starlist">
+      <li class="got">Passed the lesson</li>
+      <li class="${speedStar ? "got" : ""}">Speed star: ${speedGoal}+ WPM in practice</li>
+      <li class="${shieldStar ? "got" : ""}">Shield star: no shields lost in the mission</li></ul>`;
+    const buttons = [];
+    if (next) buttons.push({ label: `Next: ${next.id} · ${escapeHtml(next.name)}`, act: "next", primary: true });
+    buttons.push({ label: "Replay lesson", act: "drill", primary: !next }, { label: "Lesson list", act: "list" });
+    renderSkillCard({ title, cls: "win", lede, stars, starNote,
+      results: [["Practice accuracy", p.acc + "%"], ["Practice WPM", p.wpm], ["Mission accuracy", macc], ["Score", G.score]], buttons });
+    sfx.level();
+  }
+
+  const escapeHtml = (s) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;");
+  function leakedHTML() {
+    const leaked = Object.entries(G.leaked).sort((a, b) => b[1] - a[1]).slice(0, 5).map((e) => e[0]);
+    if (!leaked.length) return "";
+    return '<div class="practice"><span class="hint">Keys to practice:</span>' +
+      leaked.map((k) => `<span class="k" style="--f:var(--f${FINGER[lc(k)] ?? 3})">${escapeHtml(keyLabel(k))}</span>`).join("") + "</div>";
+  }
+  const starRow = (n) => `<div class="stars" role="img" aria-label="${n} out of 3 stars">${[0, 1, 2].map((i) => `<span class="${i < n ? "" : "dim"}">★</span>`).join("")}</div>`;
+  function renderSkillCard(o) {
+    $("#skillCard").innerHTML = `<h2 class="${o.cls || ""}">${o.title}</h2>
+      ${o.lede ? `<p class="lede">${o.lede}</p>` : ""}
+      ${o.stars ? starRow(o.stars) : ""}
+      ${o.starNote || ""}
+      ${o.checks ? `<div class="checks">${o.checks.map((c) => `<div class="check ${c.ok ? "ok" : "no"}"><div class="lbl">${c.label}</div><div class="val">${c.value}</div><div class="goal-line">${c.ok ? "✓ Goal met" : "✗ Goal"}: ${c.goal}</div></div>`).join("")}</div>` : ""}
+      ${o.results ? `<div class="results">${o.results.map((r) => `<div class="result"><div class="lbl">${r[0]}</div><div class="val">${r[1]}</div></div>`).join("")}</div>` : ""}
+      ${o.practice || ""}
+      <div class="row">${o.buttons.map((b) => `<button class="btn${b.primary ? "" : " ghost"}" type="button" data-act="${b.act}">${b.label}</button>`).join("")}</div>
+      <span class="hint">Press Enter for ${o.buttons.find((b) => b.primary).label.replace(/<[^>]+>/g, "")}</span>`;
+    show("#skillResult");
+    const first = $("#skillCard .btn:not(.ghost)");
+    if (first) first.focus();
+  }
+  function skillAction(act) {
+    if (act === "mission") startMission();
+    else if (act === "drill") startLesson(skillRun.i);
+    else if (act === "next") startLesson(skillRun.i + 1);
+    else if (act === "list") toMenu();
+  }
+
+  // ---- Menu ----
+  function setMenuMode(m) {
+    menuMode = m;
+    store.set("st-mode", m);
+    $("#tab-arcade").setAttribute("aria-selected", String(m === "arcade"));
+    $("#tab-skill").setAttribute("aria-selected", String(m === "skill"));
+    $("#arcadePanel").hidden = m !== "arcade";
+    $("#skillPanel").hidden = m !== "skill";
+    if (m === "skill") renderSkillMenu();
+  }
+  function renderSkillMenu() {
+    const prog = skillProgress();
+    const next = nextLessonIndex(prog);
+    if (menuTier === null) menuTier = next !== null ? LESSON_INFO[next].tier : 3;
+    $("#tierTabs").innerHTML = TIERS.map((T, ti) => {
+      const ls = LESSON_INFO.filter((L) => L.tier === ti);
+      const done = ls.filter((L) => prog[L.id]).length;
+      const locked = !unlocked(ls[0].i, prog);
+      return `<button class="tier-tab${locked ? " locked" : ""}" type="button" role="tab" data-t="${ti}" aria-selected="${ti === menuTier}">
+        <b>${T.name}</b><small>${locked ? "Locked" : `${done}/${ls.length} passed`}</small></button>`;
+    }).join("");
+    const T = TIERS[menuTier];
+    $("#tierBlurb").textContent = T.blurb;
+    $("#lessonList").innerHTML = LESSON_INFO.filter((L) => L.tier === menuTier).map((L) => {
+      const p = prog[L.id], open = unlocked(L.i, prog), isNext = L.i === next;
+      const keys = L.kind === "keys" || L.kind === "numbers" ? "New keys: " + L.fresh.map((c) => escapeHtml(c.toUpperCase())).join(" ")
+        : L.kind === "caps" ? "New: Shift + letters" : L.add ? "New keys: " + L.fresh.map(escapeHtml).join(" ") : "Review";
+      const stat = p ? `<span class="lstars" aria-label="${p.stars} stars">${[0, 1, 2].map((i) => `<span class="${i < p.stars ? "" : "dim"}">★</span>`).join("")}</span>`
+        : !open ? `<span class="lock">Locked</span>` : `<span class="go">${isNext ? "Up next" : "Start"} ›</span>`;
+      return `<li><button class="lesson${isNext ? " next" : ""}" type="button" data-i="${L.i}"${open ? "" : " disabled"}>
+        <span class="code">${L.id}</span>
+        <span class="ltxt"><b>${escapeHtml(L.name)}</b><small>${keys}</small></span>
+        <span class="lstat">${stat}</span></button></li>`;
+    }).join("");
+    $("#tierGoal").innerHTML = `To pass a ${T.name} lesson: <b>${T.acc}% accuracy</b> and <b>${T.wpm} WPM</b> in practice, then win the mission.`;
+    const btn = $("#skillStart");
+    if (next !== null) { btn.textContent = `Start ${LESSON_INFO[next].id} · ${LESSON_INFO[next].name}`; btn.dataset.i = next; }
+    else { btn.textContent = "Replay the Final exam"; btn.dataset.i = LESSON_INFO.length - 1; }
+  }
+
   // ---------- HUD & screens ----------
   function updateHud() {
     if (!G) return;
     $("#score").textContent = G.score;
     paintWpm();
-    $("#level").textContent = `${G.level}/${MAX_LEVEL}`;
-    const kind = bossKind(G.level);
-    $("#toBossLbl").textContent = kind === "ultra" ? "Ultra boss" : kind === "mega" ? "Mega boss" : "Boss";
+    $("#level").textContent = G.skill ? G.skill.code : `${G.level}/${MAX_LEVEL}`;
+    $("#levelLbl").textContent = G.skill ? "Lesson" : "Level";
+    const kind = curBossKind();
+    $("#toBossLbl").textContent = G.phase === "drill" ? "Stage" : kind === "ultra" ? "Ultra boss" : kind === "mega" ? "Mega boss" : "Boss";
     const tb = $("#toBoss");
-    if (G.phase === "won") { tb.textContent = "Beaten!"; tb.classList.remove("now"); }
-    else if (G.phase === "rocks") { tb.textContent = ROCKS_PER_LEVEL - G.levelHits + " left"; tb.classList.remove("now"); }
+    if (G.phase === "drill") { tb.textContent = "Practice"; tb.classList.remove("now"); }
+    else if (G.phase === "won") { tb.textContent = "Beaten!"; tb.classList.remove("now"); }
+    else if (G.phase === "rocks") { tb.textContent = rocksNeeded() - G.levelHits + " left"; tb.classList.remove("now"); }
     else { tb.textContent = "Now!"; tb.classList.add("now"); }
     const mult = streakMult(G.streak);
     const st = $("#streak");
@@ -1835,7 +2554,7 @@ legend { font-size: 12px; letter-spacing: 0.14em; text-transform: uppercase; col
   }
 
   function show(id) {
-    ["#menu", "#pause", "#over", "#won"].forEach((s) => { $(s).hidden = s !== id; });
+    ["#menu", "#pause", "#over", "#won", "#skillResult"].forEach((s) => { $(s).hidden = s !== id; });
   }
 
   function refreshMenuBest() {
@@ -1857,9 +2576,10 @@ legend { font-size: 12px; letter-spacing: 0.14em; text-transform: uppercase; col
     initAudio(); mode = "play"; show(null); last = performance.now();
   }
   function toMenu() {
+    exitSkill();
     mode = "menu"; G = null; biome = prevBiome = 0; biomeFade = 1;
-    updateLiveKeys(); refreshMenuBest(); show("#menu");
-    $("#startBtn").focus();
+    updateLiveKeys(); refreshMenuBest(); renderSkillMenu(); show("#menu");
+    (menuMode === "skill" ? $("#skillStart") : $("#startBtn")).focus();
   }
   // Fills the shared result tiles on the game-over ("r") or victory ("w") screen.
   function fillResults(p) {
@@ -1882,6 +2602,7 @@ legend { font-size: 12px; letter-spacing: 0.14em; text-transform: uppercase; col
     return acc;
   }
   function gameOver() {
+    if (G.skill) return finishMission(false);
     mode = "over";
     fillResults("r");
     $("#rLevel").textContent = `${G.level}/${MAX_LEVEL}`;
@@ -1889,6 +2610,7 @@ legend { font-size: 12px; letter-spacing: 0.14em; text-transform: uppercase; col
     show("#over"); $("#againBtn").focus();
   }
   function winGame() {
+    if (G.skill) return finishMission(true);
     mode = "won";
     const acc = fillResults("w");
     const n = acc >= 0.95 ? 3 : acc >= 0.85 ? 2 : 1;
@@ -1908,6 +2630,16 @@ legend { font-size: 12px; letter-spacing: 0.14em; text-transform: uppercase; col
       e.preventDefault(); return;
     }
     if (k === "Enter") {
+      if (mode === "skillres") {
+        const b = document.activeElement && document.activeElement.closest && document.activeElement.closest("#skillCard .btn");
+        if (!b) { e.preventDefault(); const p = $("#skillCard .btn:not(.ghost)"); if (p) p.click(); }
+        return;
+      }
+      if (mode === "menu" && menuMode === "skill") {
+        const a = document.activeElement;
+        if (a && a.closest && (a.closest(".lesson") || a.closest(".tier-tab") || a.closest(".mode-tab"))) return;
+        e.preventDefault(); $("#skillStart").click(); return;
+      }
       if (mode === "menu" || mode === "over" || mode === "won") {
         const id = document.activeElement && document.activeElement.id;
         if (id === "menuBtn" || id === "quitBtn" || id === "wMenuBtn") return;
@@ -1915,8 +2647,9 @@ legend { font-size: 12px; letter-spacing: 0.14em; text-transform: uppercase; col
       }
       return;
     }
-    if (mode === "play" && /^[a-zA-Z;,.'\/\-!? ]$/.test(k)) {
+    if (mode === "play" && /^[a-zA-Z0-9;,.'\/\-!? ]$/.test(k)) {
       e.preventDefault();
+      if (/[0-9]/.test(k) && !(G && G.skill)) return; // only Skill Build uses the number row
       initAudio();
       handleLetter(capsOn() ? k : k.toLowerCase());
     }
@@ -1942,6 +2675,22 @@ legend { font-size: 12px; letter-spacing: 0.14em; text-transform: uppercase; col
   });
 
   $("#startBtn").addEventListener("click", startGame);
+  $("#tab-arcade").addEventListener("click", () => setMenuMode("arcade"));
+  $("#tab-skill").addEventListener("click", () => setMenuMode("skill"));
+  $("#tierTabs").addEventListener("click", (e) => {
+    const b = e.target.closest(".tier-tab"); if (!b) return;
+    menuTier = +b.dataset.t; renderSkillMenu();
+    const sel = $(`#tierTabs [data-t="${menuTier}"]`); if (sel) sel.focus();
+  });
+  $("#lessonList").addEventListener("click", (e) => {
+    const b = e.target.closest(".lesson"); if (!b || b.disabled) return;
+    startLesson(+b.dataset.i);
+  });
+  $("#skillStart").addEventListener("click", (e) => startLesson(+e.currentTarget.dataset.i));
+  $("#skillCard").addEventListener("click", (e) => {
+    const b = e.target.closest(".btn"); if (!b) return;
+    skillAction(b.dataset.act);
+  });
   $("#againBtn").addEventListener("click", startGame);
   $("#menuBtn").addEventListener("click", toMenu);
   $("#wAgainBtn").addEventListener("click", startGame);
@@ -1968,6 +2717,7 @@ legend { font-size: 12px; letter-spacing: 0.14em; text-transform: uppercase; col
     ctx.save();
     if (shake) ctx.translate((Math.random() - 0.5) * shake, (Math.random() - 0.5) * shake);
     drawBackground(t);
+    if (G && G.phase === "drill" && G.drill) drawDrill(t);
     if (G) G.rocks.forEach(drawRock);
     if (G) drawComets(t);
     if (G && G.boss) drawBoss(t);
@@ -1979,6 +2729,7 @@ legend { font-size: 12px; letter-spacing: 0.14em; text-transform: uppercase; col
 
   refreshKeyLesson();
   refreshMenuBest();
+  setMenuMode(menuMode);
   resize();
   if (document.fonts && document.fonts.ready) document.fonts.ready.then(resize);
   requestAnimationFrame(frame);
