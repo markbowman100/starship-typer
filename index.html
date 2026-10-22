@@ -352,7 +352,7 @@ legend { font-size: 12px; letter-spacing: 0.14em; text-transform: uppercase; col
       <div class="best" id="menuBest"></div>
       </div>
       <div class="panel" id="skillPanel" hidden>
-        <p class="lede">Build your typing skills one step at a time. Each lesson starts with calm practice on a few new keys, then a short mission to test them. Pass a lesson to unlock the next one.</p>
+        <p class="lede">Build your typing skills one step at a time. Each lesson starts with a practice run, where asteroids carrying the new keys glide in and wait at your shield. Then a short mission tests them for real. Pass a lesson to unlock the next one.</p>
         <div class="tiers" id="tierTabs" role="tablist" aria-label="Skill levels"></div>
         <p class="tier-blurb" id="tierBlurb"></p>
         <ol class="lessons" id="lessonList"></ol>
@@ -701,7 +701,7 @@ legend { font-size: 12px; letter-spacing: 0.14em; text-transform: uppercase; col
   }
   function updateLiveKeys() {
     let live;
-    if (G && G.phase === "drill") live = G.drill.idx < G.drill.text.length ? [G.drill.text[G.drill.idx]] : [];
+    if (G && G.phase === "drill") live = G.lock ? [G.lock.text[G.lock.typed]] : [];
     else if (G && G.boss && G.phase === "boss") live = [G.boss.word[G.boss.idx]];
     else if (G && G.lock) live = [G.lock.text[G.lock.typed]];
     else live = G ? G.rocks.map((r) => r.text[0]) : [];
@@ -726,13 +726,20 @@ legend { font-size: 12px; letter-spacing: 0.14em; text-transform: uppercase; col
 
   // ---------- World ----------
   let W = 0, H = 0, playH = 0, DPR = 1, scale = 1, hudBottom = 60;
-  const ship = { x: 0, y: 0, angle: -Math.PI / 2, r: 22, wobble: 0 };
+  // The hull always faces forward; ship.angle is where the turret on top is aiming.
+  const ship = { x: 0, y: 0, angle: -Math.PI / 2, r: 22, wobble: 0, recoil: 0 };
   let stars = [], particles = [], lasers = [], texts = [], shake = 0;
   let G = null;
   let mode = "menu";
   let biome = 0, prevBiome = 0, biomeFade = 1;
+  // Scenery drifts slowly past (planets faster than nebulae) to sell the ship's speed.
+  // Each biome's landmark starts in its home spot when that biome arrives, then drifts down.
+  let bgScroll = 0, featureStart = {};
+  const FEATURE_SPEED = 9, NEBULA_SPEED = 3.5; // pixels per second: very slow next to the stars
+  function resetScenery() { bgScroll = 0; featureStart = {}; }
   function setBiome(i) {
     if (i === biome) return;
+    featureStart[i] = bgScroll;
     prevBiome = biome; biome = i; biomeFade = 0;
   }
 
@@ -744,15 +751,18 @@ legend { font-size: 12px; letter-spacing: 0.14em; text-transform: uppercase; col
     ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
     playH = H - keysWrap.getBoundingClientRect().height;
     hudBottom = Math.min(160, $("#hud").getBoundingClientRect().bottom || 60);
-    ship.x = W / 2;
-    ship.y = Math.max(140, 60 + (playH - 60) * 0.55);
+    // Sit low on the screen so asteroids have farther to travel (more time to type).
+    ship.homeX = W / 2;
+    ship.y = Math.max(140, playH - Math.max(84, Math.min(120, playH * 0.16)));
+    ship.x = ship.homeX + (ship.strafe || 0) + (ship.evade || 0);
     scale = Math.min(1.25, Math.max(0.55, Math.hypot(W, playH) / 900));
     makeStars();
+    speedLines = Array.from({ length: Math.max(3, Math.round(W / 280)) }, () => makeSpeedLine(true));
   }
   function makeStars() {
     const n = Math.round((W * H) / 2600);
     stars = Array.from({ length: n }, () => ({
-      x: Math.random() * W, y: Math.random() * H, z: Math.random() * 0.9 + 0.1, tw: Math.random() * 6.28,
+      x: Math.random() * W, y: Math.random() * H, z: 0.1 + 0.9 * Math.pow(Math.random(), 2.2), tw: Math.random() * 6.28,
     }));
   }
   const rockSize = () => Math.max(22, Math.min(34, W / 24));
@@ -762,12 +772,21 @@ legend { font-size: 12px; letter-spacing: 0.14em; text-transform: uppercase; col
           rocks: [], t: 0, spawnT: 0.8, leaked: {}, dying: 0,
           phase: "rocks", levelHits: 0, phaseT: 0, boss: null, bosses: 0, usedBoss: new Set(), winning: 0, lock: null, comets: [], cometT: 5, typeT: 0, wpmT: 0 };
     particles = []; lasers = []; texts = [];
-    biome = prevBiome = 0; biomeFade = 1;
+    biome = prevBiome = 0; biomeFade = 1; resetScenery();
     ship.angle = -Math.PI / 2;
     updateHud(); updateLiveKeys();
   }
 
   const pick = (arr) => arr[(Math.random() * arr.length) | 0];
+  // Turn an object's velocity toward the ship's current position, keeping its speed.
+  function homeIn(o, dt, rate) {
+    const sp = Math.hypot(o.vx, o.vy) || 1;
+    const dx = ship.x - o.x, dy = ship.y - o.y, d = Math.hypot(dx, dy) || 1;
+    const k = Math.min(1, dt * rate);
+    o.vx += ((dx / d) * sp - o.vx) * k; o.vy += ((dy / d) * sp - o.vy) * k;
+    const s2 = Math.hypot(o.vx, o.vy) || 1;
+    o.vx *= sp / s2; o.vy *= sp / s2;
+  }
   function letterGroup(keys, len) {
     let s = "";
     while (s.length < len) { const c = pick(keys); if (c !== s[s.length - 1]) s += c; }
@@ -899,7 +918,7 @@ legend { font-size: 12px; letter-spacing: 0.14em; text-transform: uppercase; col
     }
     flashKey(k, "ok");
     r.typed++;
-    ship.angle = Math.atan2(r.y - ship.y, r.x - ship.x);
+    ship.recoil = 1; ship.angle = Math.atan2(r.y - ship.y, r.x - ship.x);
     const nx = ship.x + Math.cos(ship.angle) * 24, ny = ship.y + Math.sin(ship.angle) * 24;
     lasers.push({ x1: nx, y1: ny, x2: r.x, y2: r.y, life: 0.2, max: 0.2 });
     G.hits++; G.streak++; G.bestStreak = Math.max(G.bestStreak, G.streak);
@@ -1078,7 +1097,7 @@ legend { font-size: 12px; letter-spacing: 0.14em; text-transform: uppercase; col
     if (k === need) {
       flashKey(k, "ok");
       const { x, y } = bossPos();
-      ship.angle = Math.atan2(y - ship.y, x - ship.x);
+      ship.recoil = 1; ship.angle = Math.atan2(y - ship.y, x - ship.x);
       const nx = ship.x + Math.cos(ship.angle) * 24, ny = ship.y + Math.sin(ship.angle) * 24;
       lasers.push({ x1: nx, y1: ny, x2: x, y2: y, life: 0.2, max: 0.2 });
       burst(x, y, "#7dffb0", 10, 150);
@@ -1238,6 +1257,7 @@ legend { font-size: 12px; letter-spacing: 0.14em; text-transform: uppercase; col
     for (let i = G.comets.length - 1; i >= 0; i--) {
       const c = G.comets[i];
       if (c.warn > 0) { c.warn -= dt; if (c.warn <= 0) sfx.whoosh(); continue; }
+      homeIn(c, dt, 6);
       c.x += c.vx * dt; c.y += c.vy * dt;
       if (Math.hypot(c.x - ship.x, c.y - ship.y) < ship.r + 10) {
         G.comets.splice(i, 1);
@@ -1251,7 +1271,7 @@ legend { font-size: 12px; letter-spacing: 0.14em; text-transform: uppercase; col
     G.comets.splice(G.comets.indexOf(c), 1);
     const tx = c.warn > 0 ? Math.max(10, Math.min(W - 10, c.x)) : c.x;
     const ty = c.warn > 0 ? Math.max(70, Math.min(playH - 10, c.y)) : c.y;
-    ship.angle = Math.atan2(ty - ship.y, tx - ship.x);
+    ship.recoil = 1; ship.angle = Math.atan2(ty - ship.y, tx - ship.x);
     const nx = ship.x + Math.cos(ship.angle) * 24, ny = ship.y + Math.sin(ship.angle) * 24;
     lasers.push({ x1: nx, y1: ny, x2: tx, y2: ty, life: 0.2, max: 0.2 });
     G.hits++; G.streak++; G.bestStreak = Math.max(G.bestStreak, G.streak);
@@ -1281,15 +1301,9 @@ legend { font-size: 12px; letter-spacing: 0.14em; text-transform: uppercase; col
   function update(dt) {
     G.t += dt;
     if (!G.dying && (G.phase === "rocks" || (G.phase === "boss" && G.boss && G.boss.enter >= 1))) G.typeT += dt;
-    if (G.phase === "drill" && G.drill.started && !G.drill.done) G.typeT += dt;
     G.wpmT -= dt;
     if (G.wpmT <= 0) { G.wpmT = 0.5; paintWpm(); }
-    if (G.phase === "drill") {
-      // Calm practice: nothing attacks. Park the ship low so the text box has room.
-      G.drill.flash = Math.max(0, G.drill.flash - dt);
-      ship.y = Math.max(140, playH - 78);
-      return;
-    }
+    if (G.phase === "drill") { updatePractice(dt); return; }
     if (G.dying) {
       G.dying -= dt;
       if (G.dying <= 0) { G.dying = 0; gameOver(); }
@@ -1307,10 +1321,34 @@ legend { font-size: 12px; letter-spacing: 0.14em; text-transform: uppercase; col
     }
     for (let i = G.rocks.length - 1; i >= 0; i--) {
       const r = G.rocks[i];
+      homeIn(r, dt, 1.6);
       r.x += r.vx * dt; r.y += r.vy * dt; r.rot += r.vr * dt;
       if (Math.hypot(r.x - ship.x, r.y - ship.y) < r.r * 0.8 + ship.r) hitShip(r, i);
     }
     if (!G.dying) updateComets(dt);
+  }
+
+  // The ship lazily strafes side to side, and slowly sidesteps asteroids that get close.
+  // Evasion is deliberately slower than any asteroid, so it buys a moment but never dodges a hit.
+  const EVADE_SPEED = 16, EVADE_RANGE = 0.18;
+  function moveShip(dt) {
+    ship.t = (ship.t || 0) + dt;
+    const calm = reduceMotion ? 0.35 : 1;
+    ship.strafe = (Math.sin(ship.t * 0.33) * W * 0.07 + Math.sin(ship.t * 0.11 + 1.3) * W * 0.035) * calm;
+    let push = 0;
+    if (G && !G.dying && (G.phase === "rocks" || G.phase === "drill")) {
+      const reach = 230 * scale + 60;
+      for (const r of G.rocks) {
+        const dx = ship.x - r.x, dy = ship.y - r.y, d = Math.hypot(dx, dy);
+        if (d < reach && dy > -40) push += (dx / (d || 1)) * (1 - d / reach); // only threats from above/beside
+      }
+    }
+    const target = Math.max(-1, Math.min(1, push * 1.4)) * W * EVADE_RANGE;
+    const ev = ship.evade || 0;
+    const step = EVADE_SPEED * calm * dt * (push ? 1 : 0.6);
+    ship.evade = ev + Math.max(-step, Math.min(step, target - ev));
+    const lo = W * 0.15, hi = W * 0.85;
+    ship.x = Math.max(lo, Math.min(hi, ship.homeX + ship.strafe + ship.evade));
   }
 
   function updateFx(dt) {
@@ -1323,6 +1361,23 @@ legend { font-size: 12px; letter-spacing: 0.14em; text-transform: uppercase; col
     for (let i = texts.length - 1; i >= 0; i--) { const t = texts[i]; t.life -= dt; t.y -= 40 * dt; if (t.life <= 0) texts.splice(i, 1); }
     shake = Math.max(0, shake - 40 * dt);
     ship.wobble = Math.max(0, ship.wobble - dt);
+    ship.recoil = Math.max(0, ship.recoil - dt * 8);
+    moveShip(dt);
+    // Between shots the turret swings back to face forward.
+    let da = -Math.PI / 2 - ship.angle;
+    da = Math.atan2(Math.sin(da), Math.cos(da));
+    ship.angle += da * Math.min(1, dt * 2.5);
+    // Exhaust trail streaming out behind the ship
+    if (!reduceMotion && !(G && G.shields <= 0)) {
+      const back = Math.PI / 2; // exhaust always streams straight behind the hull
+      const ex = ship.x + Math.cos(back) * 28, ey = ship.y + Math.sin(back) * 28;
+      for (let i = 0; i < 2; i++) {
+        const life = 0.18 + Math.random() * 0.2;
+        particles.push({ x: ex + (Math.random() - 0.5) * 6, y: ey, vx: Math.cos(back) * 160 + (Math.random() - 0.5) * 40,
+                         vy: Math.sin(back) * 160 + 260, life, max: life,
+                         color: Math.random() < 0.5 ? "#ffb35c" : "#ffd768", size: 1.5 + Math.random() * 2.5 });
+      }
+    }
   }
 
   // ---------- Drawing ----------
@@ -1581,41 +1636,76 @@ legend { font-size: 12px; letter-spacing: 0.14em; text-transform: uppercase; col
     }
   }
 
-  function paintBiome(b, t) {
+  function paintBiome(b, t, idx) {
     ctx.fillStyle = b.bg; ctx.fillRect(0, 0, W, H);
-    glow(W * 0.22, H * 0.25, Math.max(W, H) * 0.55, b.n1);
-    glow(W * 0.85, H * 0.7, Math.max(W, H) * 0.45, b.n2);
-    drawFeature(b, t);
+    // Nebula clouds: a slow loop, spaced so a copy always covers the screen
+    const nPer = H * 1.3, no = (bgScroll * NEBULA_SPEED) % nPer;
+    for (const o of [no, no - nPer]) {
+      glow(W * 0.22, H * 0.25 + o, Math.max(W, H) * 0.55, b.n1);
+      glow(W * 0.85, H * 0.7 + o, Math.max(W, H) * 0.45, b.n2);
+    }
+    // Landmark (planet, moon, sun...): drifts down and off the screen, then comes around again from the top
+    const fPer = H * 1.7, fo = ((bgScroll - (featureStart[idx] || 0)) * FEATURE_SPEED) % fPer;
+    for (const o of [fo, fo - fPer]) {
+      ctx.save(); ctx.translate(0, o); drawFeature(b, t); ctx.restore();
+    }
   }
 
   function drawBackground(t) {
-    paintBiome(biomes()[prevBiome], t);
+    paintBiome(biomes()[prevBiome], t, prevBiome);
     if (biome !== prevBiome) {
       ctx.globalAlpha = biomeFade;
-      paintBiome(biomes()[biome], t);
+      paintBiome(biomes()[biome], t, biome);
       ctx.globalAlpha = 1;
     }
+    // Stars streak past: near stars are long and bright, far ones are short dots.
     const sc = biomes()[biome].star;
     for (const s of stars) {
-      const a = 0.35 + 0.65 * s.z * (0.75 + 0.25 * Math.sin(t * 2 + s.tw));
+      const a = 0.3 + 0.7 * s.z * (0.8 + 0.2 * Math.sin(t * 2 + s.tw));
+      const sz = 0.8 + s.z * 1.6;
+      const len = Math.max(sz, (s.v || 0) * 0.045);
+      ctx.fillStyle = `rgba(${sc},${a * 0.18})`;
+      ctx.fillRect(s.x, s.y - len, sz, len);
+      ctx.fillStyle = `rgba(${sc},${a * 0.4})`;
+      ctx.fillRect(s.x, s.y - len * 0.45, sz, len * 0.45);
       ctx.fillStyle = `rgba(${sc},${a})`;
-      const sz = s.z * 1.8;
-      ctx.fillRect(s.x, s.y, sz, sz);
+      ctx.fillRect(s.x, s.y - sz, sz, sz);
+    }
+    // Speed lines: long, faint streaks for a sense of rushing forward
+    for (const l of speedLines) {
+      const g = ctx.createLinearGradient(l.x, l.y - l.len, l.x, l.y);
+      g.addColorStop(0, `rgba(${sc},0)`); g.addColorStop(1, `rgba(${sc},${l.a})`);
+      ctx.fillStyle = g;
+      ctx.fillRect(l.x, l.y - l.len, 1.5, l.len);
     }
   }
+  let speedLines = [];
+  function makeSpeedLine(anywhere) {
+    return { x: Math.random() * W, y: anywhere ? Math.random() * H : -Math.random() * 200,
+             len: 120 + Math.random() * 200, v: 1500 + Math.random() * 1000, a: 0.05 + Math.random() * 0.1 };
+  }
   function moveStars(dt) {
-    const drift = biomes()[biome].drift;
+    const pace = reduceMotion ? 0.12 : 1;
+    bgScroll += dt * (reduceMotion ? 0.3 : 1);
     for (const s of stars) {
-      s.y += s.z * drift * dt;
-      if (s.y > H) { s.y = 0; s.x = Math.random() * W; }
-      else if (s.y < 0) { s.y = H; s.x = Math.random() * W; }
+      s.v = (90 + 760 * s.z * s.z) * pace;
+      s.y += s.v * dt;
+      if (s.y - s.v * 0.05 > H) { s.y = -Math.random() * 40; s.x = Math.random() * W; }
+    }
+    if (!reduceMotion) {
+      if (speedLines.length < Math.max(3, Math.round(W / 280))) speedLines.push(makeSpeedLine(false));
+      for (let i = speedLines.length - 1; i >= 0; i--) {
+        const l = speedLines[i];
+        l.y += l.v * dt;
+        if (l.y - l.len > H) speedLines.splice(i, 1);
+      }
     }
     if (biomeFade < 1) { biomeFade = Math.min(1, biomeFade + dt / 2.5); if (biomeFade >= 1) prevBiome = biome; }
   }
 
   function drawShip(t) {
     if (G && G.shields <= 0) return;
-    const bob = Math.sin(t * 2) * 3;
+    const bob = Math.sin(t * 9) * 0.8 + (Math.random() - 0.5) * 0.6; // engine rumble, not a float
     const wob = ship.wobble > 0 ? Math.sin(ship.wobble * 60) * 3 : 0;
     ctx.save();
     ctx.translate(ship.x + wob, ship.y + bob);
@@ -1626,9 +1716,8 @@ legend { font-size: 12px; letter-spacing: 0.14em; text-transform: uppercase; col
       ctx.lineWidth = 2;
       ctx.beginPath(); ctx.arc(0, 0, 38 + Math.sin(t * 3) * 1.5, 0, 6.28); ctx.stroke();
     }
-    ctx.rotate(ship.angle + Math.PI / 2);
     // flame
-    const fl = 10 + Math.random() * 8;
+    const fl = 20 + Math.random() * 14;
     ctx.fillStyle = "rgba(255,140,60,0.85)";
     ctx.beginPath(); ctx.moveTo(-7, 12); ctx.lineTo(0, 12 + fl); ctx.lineTo(7, 12); ctx.fill();
     ctx.fillStyle = "rgba(255,240,180,0.9)";
@@ -1647,12 +1736,30 @@ legend { font-size: 12px; letter-spacing: 0.14em; text-transform: uppercase; col
     ctx.beginPath(); ctx.ellipse(0, -8, 4.5, 7, 0, 0, 6.28); ctx.fill();
     ctx.fillStyle = "rgba(255,255,255,0.7)";
     ctx.beginPath(); ctx.ellipse(-1.5, -10, 1.5, 2.5, 0, 0, 6.28); ctx.fill();
+    // turret: a swivel mount on the hull with a barrel that tracks the target and kicks back on each shot
+    ctx.save();
+    ctx.translate(0, 3);
+    ctx.rotate(ship.angle);
+    const barrel = 21 - ship.recoil * 6;
+    ctx.fillStyle = "#3c4a7a";
+    ctx.fillRect(0, -2.6, barrel, 5.2);
+    ctx.strokeStyle = "#1a2244"; ctx.lineWidth = 1; ctx.strokeRect(0, -2.6, barrel, 5.2);
+    ctx.fillStyle = ship.recoil > 0.3 ? "#ffffff" : "#5ff2ff";
+    ctx.fillRect(barrel - 3, -2.6, 3, 5.2);
+    ctx.restore();
+    const tg = ctx.createRadialGradient(-2, 1, 1, 0, 3, 8);
+    tg.addColorStop(0, "#8b9bd6"); tg.addColorStop(1, "#2b3666");
+    ctx.fillStyle = tg;
+    ctx.beginPath(); ctx.arc(0, 3, 7.5, 0, 6.28); ctx.fill();
+    ctx.strokeStyle = "#141a38"; ctx.lineWidth = 1.5; ctx.stroke();
+    ctx.fillStyle = "#5ff2ff";
+    ctx.beginPath(); ctx.arc(0, 3, 2.2, 0, 6.28); ctx.fill();
     ctx.restore();
   }
 
   function drawRock(r) {
     const d = Math.hypot(r.x - ship.x, r.y - ship.y);
-    const danger = d < 170 * scale + 40;
+    const danger = d < 170 * scale + 40 && !r.calm;
     ctx.save(); ctx.translate(r.x, r.y);
     if (danger) {
       ctx.strokeStyle = `rgba(255,93,115,${0.35 + 0.3 * Math.sin(performance.now() / 90)})`;
@@ -2253,13 +2360,14 @@ legend { font-size: 12px; letter-spacing: 0.14em; text-transform: uppercase; col
     const L = LESSON_INFO[i], T = TIERS[L.tier];
     G.skill = makeSkillState(i);
     G.phase = "drill";
-    G.drill = { text: makeDrillText(L), idx: 0, correct: 0, errors: 0, flash: 0, started: false, done: false };
+    const queue = makeDrillText(L).split(" ").filter(Boolean);
+    G.drill = { queue, total: queue.length, cleared: 0, correct: 0, errors: 0, flash: 0, spawnT: 0.4, started: false, done: false };
     biome = prevBiome = T.biome; biomeFade = 1;
     skillRun = { i, practice: null };
     menuTier = L.tier;
     mode = "play"; show(null);
     updateHud(); updateLiveKeys();
-    showBanner(`${L.id} · ${L.name}`, "Practice: type the keys in the box");
+    showBanner(`${L.id} · ${L.name}`, "Practice run: asteroids stop at your shield, so take your time");
   }
   function startMission() {
     const i = skillRun.i, L = LESSON_INFO[i], T = TIERS[L.tier];
@@ -2276,30 +2384,88 @@ legend { font-size: 12px; letter-spacing: 0.14em; text-transform: uppercase; col
     showBanner("Mission!", `Blast ${G.skill.rocks} asteroids, then beat ${bossTxt}`);
   }
 
+  // ---- Practice run: the lesson's keys ride in on asteroids, in order. ----
+  // They glide toward the ship like the main game but stop at the shield, so there's no pressure.
+  const PRACTICE_ON_SCREEN = 3;
+  function spawnPracticeRock(text) {
+    const len = text.length;
+    const R = rockSize() * Math.min(2, 1 + 0.2 * (len - 1));
+    let x, y; const side = Math.random();
+    if (side < 0.5) { x = R + Math.random() * (W - 2 * R); y = -R; }
+    else if (side < 0.75) { x = -R; y = 70 + Math.random() * Math.max(10, playH * 0.45); }
+    else { x = W + R; y = 70 + Math.random() * Math.max(10, playH * 0.45); }
+    const speed = SPEEDS[settings.speed].base * scale * 1.15;
+    const a = Math.atan2(ship.y - y, ship.x - x);
+    const n = 9 + rnd(4), shape = [];
+    for (let i = 0; i < n; i++) shape.push(0.8 + Math.random() * 0.28);
+    const bi = biomes()[biome];
+    G.rocks.push({ x, y, vx: Math.cos(a) * speed, vy: Math.sin(a) * speed, r: R, text, typed: 0,
+                   rot: Math.random() * 6.28, vr: (Math.random() - 0.5) * 0.9, shape,
+                   hue: bi.rockHue + (Math.random() - 0.5) * 30, sat: bi.rockSat,
+                   calm: true, stopR: ship.r + 26 + R + Math.random() * 40, bob: Math.random() * 6.28 });
+  }
+  const onScreen = (r) => r.x > -r.r * 0.3 && r.x < W + r.r * 0.3 && r.y > -r.r * 0.3 && r.y < playH;
+  function updatePractice(dt) {
+    const d = G.drill;
+    d.flash = Math.max(0, d.flash - dt);
+    d.spawnT -= dt;
+    if (d.spawnT <= 0 && d.queue.length && G.rocks.length < PRACTICE_ON_SCREEN) {
+      spawnPracticeRock(d.queue.shift());
+      d.spawnT = 0.9;
+    }
+    for (const r of G.rocks) {
+      const dist = Math.hypot(r.x - ship.x, r.y - ship.y);
+      r.rot += r.vr * dt;
+      if (dist > r.stopR) {
+        homeIn(r, dt, 2);
+        const ease = Math.max(0.12, Math.min(1, (dist - r.stopR) / 90)); // brake as it nears the shield
+        r.x += r.vx * dt * ease; r.y += r.vy * dt * ease;
+      } else {
+        r.bob += dt * 2;
+        r.y += Math.sin(r.bob) * 6 * dt; // hover at the shield until it's blasted
+      }
+    }
+    const front = G.rocks[0] || null;
+    if (front !== G.lock) { G.lock = front; updateLiveKeys(); }
+    if (d.started && !d.done && G.lock && onScreen(G.lock)) G.typeT += dt;
+  }
+
   function drillLetter(k) {
     const d = G.drill;
-    if (d.done) return;
-    const need = d.text[d.idx];
+    if (d.done || k === " ") return; // practice asteroids never need a space
+    const r = G.rocks[0];
+    if (!r || !onScreen(r)) return;
     d.started = true;
+    const need = r.text[r.typed];
     if (k === need) {
-      const lay = drillLayout();
-      const cx = lay.x0 + (d.idx - lay.start + 0.5) * lay.cell;
-      d.idx++; d.correct++;
+      r.typed++; d.correct++;
       G.hits++; G.streak++; G.bestStreak = Math.max(G.bestStreak, G.streak);
-      if (k !== " ") {
-        flashKey(k, "ok");
-        ship.angle = Math.atan2(lay.cy - ship.y, cx - ship.x);
-        const nx = ship.x + Math.cos(ship.angle) * 24, ny = ship.y + Math.sin(ship.angle) * 24;
-        lasers.push({ x1: nx, y1: ny, x2: cx, y2: lay.cy + lay.size * 0.6, life: 0.15, max: 0.15 });
-        burst(cx, lay.cy + lay.size * 0.5, "#7dffb0", 5, 70);
-        sfx.laser();
-      } else flashKey(" ", "ok");
-      G.score += award(5, 1);
-      if (d.idx >= d.text.length) finishDrill();
+      flashKey(k, "ok");
+      ship.recoil = 1; ship.angle = Math.atan2(r.y - ship.y, r.x - ship.x);
+      const nx = ship.x + Math.cos(ship.angle) * 24, ny = ship.y + Math.sin(ship.angle) * 24;
+      lasers.push({ x1: nx, y1: ny, x2: r.x, y2: r.y, life: 0.18, max: 0.18 });
+      const pts = award(5, streakMult(G.streak));
+      G.score += pts;
+      sfx.laser();
+      if (r.typed < r.text.length) {
+        burst(r.x, r.y, `hsl(${r.hue},30%,70%)`, 6, 110);
+      } else {
+        G.rocks.shift();
+        d.cleared++;
+        burst(r.x, r.y, `hsl(${r.hue},30%,70%)`, 22 + r.text.length * 4, 170);
+        burst(r.x, r.y, "#ffc94a", 12, 220);
+        texts.push({ x: r.x, y: r.y, s: "+" + pts * r.text.length, color: "#eef0ff", life: 0.8, max: 0.8 });
+        sfx.boom();
+        G.lock = G.rocks[0] || null;
+        if (!G.rocks.length && d.queue.length) d.spawnT = 0; // never leave the player waiting
+        if (!G.rocks.length && !d.queue.length) finishDrill();
+      }
     } else {
       flashKey(k, "bad");
       d.errors++; G.misses++; G.streak = 0; d.flash = 0.35;
       G.leaked[need] = (G.leaked[need] || 0) + 1;
+      ship.wobble = 0.3;
+      texts.push({ x: ship.x, y: ship.y - 50, s: `Next: ${keyName(need)}`, color: "#ff8a9a", life: 0.8, max: 0.8 });
       sfx.miss();
     }
     updateHud(); updateLiveKeys();
@@ -2327,77 +2493,33 @@ legend { font-size: 12px; letter-spacing: 0.14em; text-transform: uppercase; col
     return lines;
   }
 
-  function drillLayout() {
-    const d = G.drill;
-    const size = Math.round(Math.max(24, Math.min(40, W / 20)));
-    const cell = size * 0.7;
-    const maxChars = Math.max(10, Math.floor((Math.min(W, 900) - 64) / cell));
-    let start = Math.max(0, d.idx - Math.floor(maxChars * 0.35));
-    start = Math.min(start, Math.max(0, d.text.length - maxChars));
-    const end = Math.min(d.text.length, start + maxChars);
-    const cy = Math.max(64, hudBottom) + 52 + size * 0.95; // clears the top bar, even when it wraps on phones
-    const x0 = W / 2 - ((end - start) * cell) / 2;
-    return { size, cell, start, end, cy, x0, maxChars };
-  }
-
-  function drawDrill(t) {
+  // Practice info strip under the top bar: lesson, progress, next key + finger, live stats, tip.
+  function drawPracticeHud(t) {
     const d = G.drill, L = G.skill.L, T = G.skill.T;
-    const lay = drillLayout();
-    const pw = Math.max(260, (lay.end - lay.start) * lay.cell + 48), ph = lay.size * 1.9;
-    const px = W / 2 - pw / 2, py = lay.cy - ph / 2;
+    const top = Math.max(64, hudBottom) + 18;
     ctx.textAlign = "center"; ctx.textBaseline = "middle";
     ctx.font = `400 13px "Bungee", "Arial Black", sans-serif`;
     ctx.fillStyle = "#a8acd8";
-    ctx.fillText(`LESSON ${L.id} · PRACTICE`, W / 2, py - 40);
-    ctx.font = `700 20px "Atkinson Hyperlegible", Verdana, sans-serif`;
-    ctx.fillStyle = "#eef0ff";
-    ctx.fillText(L.name, W / 2, py - 18);
-    ctx.fillStyle = "rgba(8,10,34,0.8)";
-    ctx.strokeStyle = d.flash > 0 ? "rgba(255,93,115,0.95)" : "rgba(150,160,255,0.35)";
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    if (ctx.roundRect) ctx.roundRect(px, py, pw, ph, 16); else ctx.rect(px, py, pw, ph);
-    ctx.fill(); ctx.stroke();
-    ctx.font = `700 ${lay.size}px "Atkinson Hyperlegible", Verdana, sans-serif`;
-    for (let i = lay.start; i < lay.end; i++) {
-      const c = d.text[i];
-      const cx = lay.x0 + (i - lay.start + 0.5) * lay.cell;
-      const edge = (i - lay.start < 2 && lay.start > 0) || (lay.end - i <= 2 && lay.end < d.text.length);
-      ctx.globalAlpha = edge ? 0.35 : 1;
-      if (i === d.idx) {
-        ctx.fillStyle = d.flash > 0 ? "rgba(255,93,115,0.3)" : "rgba(255,201,74,0.2)";
-        ctx.fillRect(cx - lay.cell / 2 + 1, lay.cy - lay.size * 0.62, lay.cell - 2, lay.size * 1.24);
-        ctx.fillStyle = "#ffc94a";
-        ctx.fillRect(cx - lay.cell / 2 + 3, lay.cy + lay.size * 0.5, lay.cell - 6, 3 + Math.sin(t * 8));
-      }
-      const col = i < d.idx ? "rgba(125,255,176,0.85)" : i === d.idx ? (d.flash > 0 ? "#ff8a9a" : "#ffc94a") : "#ffffff";
-      ctx.fillStyle = col;
-      if (c === " ") {
-        ctx.globalAlpha *= i < d.idx ? 0.4 : 0.6;
-        ctx.beginPath(); ctx.arc(cx, lay.cy + 2, Math.max(2.5, lay.size * 0.08), 0, 6.28); ctx.fill();
-      } else ctx.fillText(c, cx, lay.cy + 2);
-      ctx.globalAlpha = 1;
-    }
-    // progress bar
-    const bw = Math.min(pw, 420), by = py + ph + 16;
+    ctx.fillText(`LESSON ${L.id} · PRACTICE · ${d.cleared}/${d.total}`, W / 2, top);
+    const bw = Math.min(W - 48, 360);
     ctx.fillStyle = "rgba(150,160,255,0.2)";
-    ctx.fillRect(W / 2 - bw / 2, by, bw, 6);
+    ctx.fillRect(W / 2 - bw / 2, top + 14, bw, 5);
     ctx.fillStyle = "#5ff2ff";
-    ctx.fillRect(W / 2 - bw / 2, by, bw * (d.idx / d.text.length), 6);
-    // next key and finger
-    const next = d.text[d.idx];
-    if (next !== undefined) {
-      ctx.font = `700 16px "Atkinson Hyperlegible", Verdana, sans-serif`;
-      ctx.fillStyle = "#eef0ff";
-      ctx.fillText(`Next: ${keyName(next)}  ·  ${fingerName(next)}`, W / 2, by + 30);
+    ctx.fillRect(W / 2 - bw / 2, top + 14, bw * (d.cleared / d.total), 5);
+    const r = G.rocks[0];
+    if (r && onScreen(r)) {
+      const next = r.text[r.typed];
+      ctx.font = `700 17px "Atkinson Hyperlegible", Verdana, sans-serif`;
+      ctx.fillStyle = d.flash > 0 ? "#ff8a9a" : "#eef0ff";
+      ctx.fillText(`Next: ${keyName(next)}  ·  ${fingerName(next)}`, W / 2, top + 40);
     }
     const acc = d.correct + d.errors ? Math.round((d.correct / (d.correct + d.errors)) * 100) : 100;
     const wpm = G.typeT >= 3 ? Math.round(d.correct / 5 / (G.typeT / 60)) : null;
     ctx.font = `400 14px "Atkinson Hyperlegible", Verdana, sans-serif`;
     ctx.fillStyle = "#a8acd8";
-    ctx.fillText(`Accuracy ${acc}%  ·  ${wpm === null ? "–" : wpm} WPM   ·   Goal: ${T.acc}% · ${T.wpm} WPM`, W / 2, by + 54);
-    ctx.fillStyle = "#c9ccef";
-    wrapLines(`Tip: ${L.tip}`, Math.min(W - 40, 560)).forEach((ln, i) => ctx.fillText(ln, W / 2, by + 78 + i * 19));
+    ctx.fillText(`Accuracy ${acc}%  ·  ${wpm === null ? "–" : wpm} WPM   ·   Goal: ${T.acc}% · ${T.wpm} WPM`, W / 2, top + 63);
+    ctx.fillStyle = "rgba(201,204,239,0.85)";
+    wrapLines(`Tip: ${L.tip}`, Math.min(W - 40, 560)).forEach((ln, i) => ctx.fillText(ln, W / 2, top + 85 + i * 18));
   }
 
   function finishDrill() {
@@ -2577,7 +2699,7 @@ legend { font-size: 12px; letter-spacing: 0.14em; text-transform: uppercase; col
   }
   function toMenu() {
     exitSkill();
-    mode = "menu"; G = null; biome = prevBiome = 0; biomeFade = 1;
+    mode = "menu"; G = null; biome = prevBiome = 0; biomeFade = 1; resetScenery();
     updateLiveKeys(); refreshMenuBest(); renderSkillMenu(); show("#menu");
     (menuMode === "skill" ? $("#skillStart") : $("#startBtn")).focus();
   }
@@ -2717,7 +2839,7 @@ legend { font-size: 12px; letter-spacing: 0.14em; text-transform: uppercase; col
     ctx.save();
     if (shake) ctx.translate((Math.random() - 0.5) * shake, (Math.random() - 0.5) * shake);
     drawBackground(t);
-    if (G && G.phase === "drill" && G.drill) drawDrill(t);
+    if (G && G.phase === "drill" && G.drill) drawPracticeHud(t);
     if (G) G.rocks.forEach(drawRock);
     if (G) drawComets(t);
     if (G && G.boss) drawBoss(t);
