@@ -2034,25 +2034,27 @@ legend { font-size: 12px; letter-spacing: 0.14em; text-transform: uppercase; col
   // Pass the practice targets and win the mission to unlock the next lesson.
   const TIERS = [
     { id: "beginner", name: "Beginner", code: "B", acc: 90, wpm: 5, speed: "cadet", style: "easy", rocks: 10, maxRocks: 3, biome: 0, len: 48,
-      blurb: "Home row first, then your first reaches up to E, I, R and U." },
+      blurb: "Learn the home row, where your fingers rest: A S D F G H J K L and ;." },
     { id: "intermediate", name: "Intermediate", code: "I", acc: 92, wpm: 15, speed: "cadet", style: "medium", rocks: 12, maxRocks: 4, biome: 2, len: 70,
-      blurb: "The rest of the alphabet, real words, and capital letters." },
+      blurb: "Reach up to the top row, then down to the bottom row, until you know every letter." },
     { id: "advanced", name: "Advanced", code: "A", acc: 95, wpm: 25, speed: "pilot", style: "medium", rocks: 14, maxRocks: 4, biome: 5, len: 90,
-      blurb: "Punctuation and the number row, in full sentences." },
-    { id: "expert", name: "Expert", code: "E", acc: 97, wpm: 40, speed: "ace", style: "hard", rocks: 16, maxRocks: 5, biome: 8, len: 120,
-      comets: { gap: [7, 11], max: 1, fromLevel: 1, speedUp: 1 },
-      blurb: "Top speed with everything mixed together, plus comets in every mission." },
+      blurb: "Special characters: Shift for capitals, punctuation, and the number row." },
+    { id: "expert", name: "Expert", code: "E", acc: 97, wpm: 40, speed: "ace", style: "hard", rocks: 18, maxRocks: 5, biome: 8, len: 130,
+      comets: { gap: [5, 8], max: 2, fromLevel: 1, speedUp: 0.9 },
+      blurb: "Everything together at top speed. Comet storms in every mission. Can you pass the final exam?" },
   ];
   const SKILL_LESSONS = [
+    // Beginner: the home row
     { tier: 0, name: "F and J", add: "fj", kind: "keys", tip: "Find the little bumps on F and J. Rest your index fingers there." },
     { tier: 0, name: "D and K", add: "dk", kind: "keys", tip: "Your middle fingers rest on D and K." },
     { tier: 0, name: "S and L", add: "sl", kind: "keys", tip: "Your ring fingers rest on S and L." },
     { tier: 0, name: "A and ;", add: "a;", kind: "keys", tip: "Your pinkies rest on A and the semicolon." },
     { tier: 0, name: "G and H", add: "gh", kind: "keys", tip: "Stretch your index fingers one key toward the middle, then come back." },
-    { tier: 0, name: "Home row review", add: "", kind: "review", tip: "Keep your fingers on the home row and your eyes on the screen." },
-    { tier: 0, name: "E and I", add: "ei", kind: "keys", tip: "Reach up with your middle fingers, then come back home." },
-    { tier: 0, name: "R and U", add: "ru", kind: "keys", tip: "Reach up and in with your index fingers." },
-    { tier: 0, name: "Beginner review", add: "", kind: "review", boss: "mega", tip: "Real words using every key you've learned so far." },
+    { tier: 0, name: "Home row words", add: "", kind: "review", tip: "Real words using only the home row. Keep your eyes on the screen." },
+    { tier: 0, name: "Home row review", add: "", kind: "review", boss: "mega", tip: "Every home row key. Smooth and steady, fingers back home after each word." },
+    // Intermediate: top row, then bottom row
+    { tier: 1, name: "E and I", add: "ei", kind: "keys", tip: "Reach up with your middle fingers, then come back home." },
+    { tier: 1, name: "R and U", add: "ru", kind: "keys", tip: "Reach up and in with your index fingers." },
     { tier: 1, name: "T and Y", add: "ty", kind: "keys", tip: "Index fingers reach up and toward the middle." },
     { tier: 1, name: "W and O", add: "wo", kind: "keys", tip: "Ring fingers reach up." },
     { tier: 1, name: "Q and P", add: "qp", kind: "keys", tip: "Pinkies reach up. Keep your other fingers home." },
@@ -2061,14 +2063,17 @@ legend { font-size: 12px; letter-spacing: 0.14em; text-transform: uppercase; col
     { tier: 1, name: "B and N", add: "bn", kind: "keys", tip: "Index fingers reach down and toward the middle." },
     { tier: 1, name: "C and X", add: "cx", kind: "keys", tip: "Left middle and ring fingers reach down." },
     { tier: 1, name: "Z", add: "z", kind: "keys", tip: "Your left pinky reaches down to Z." },
-    { tier: 1, name: "All the letters", add: "", kind: "review", tip: "Every letter of the alphabet, in real words." },
-    { tier: 1, name: "Capital letters", add: "", caps: true, kind: "caps", boss: "mega", tip: "Hold Shift with the pinky on the other hand, then press the letter." },
+    { tier: 1, name: "All the letters", add: "", kind: "review", boss: "mega", tip: "Every letter of the alphabet, in real words." },
+    // Advanced: special characters
+    { tier: 2, name: "Capital letters", add: "", caps: true, kind: "caps", tip: "Hold Shift with the pinky on the other hand, then press the letter." },
     { tier: 2, name: "Period and comma", add: ".,", kind: "sentences", tip: "Comma is your right middle finger. Period is your right ring finger." },
     { tier: 2, name: "Apostrophe and slash", add: "'/", kind: "sentences", tip: "Both use your right pinky." },
     { tier: 2, name: "! ? and -", add: "!?-", kind: "sentences", tip: "! and ? need Shift. The dash sits to the right of the 0 key." },
+    { tier: 2, name: "Punctuation review", add: "", kind: "sentences", tip: "Full sentences with capitals and punctuation." },
     { tier: 2, name: "Numbers 1 to 5", add: "12345", kind: "numbers", tip: "Your left hand reaches up two rows from home." },
     { tier: 2, name: "Numbers 6 to 0", add: "67890", kind: "numbers", tip: "Your right hand reaches up two rows from home." },
-    { tier: 2, name: "Advanced review", add: "", kind: "sentences", boss: "mega", tip: "Sentences with punctuation and numbers." },
+    { tier: 2, name: "Advanced review", add: "", kind: "mixed", boss: "mega", tip: "Capitals, punctuation and numbers, all mixed together." },
+    // Expert: everything together, at speed
     { tier: 3, name: "Speed words", add: "", kind: "review", tip: "Smooth and steady beats fast and sloppy." },
     { tier: 3, name: "Sentence sprint", add: "", kind: "sentences", tip: "Keep your eyes on the next word, not the one you just typed." },
     { tier: 3, name: "Numbers and symbols", add: "", kind: "mixed", tip: "Mix numbers, symbols and words without slowing down." },
@@ -2142,7 +2147,7 @@ legend { font-size: 12px; letter-spacing: 0.14em; text-transform: uppercase; col
                letters: knownArr.filter((c) => /[a-z]/.test(c)) };
     });
   })();
-  const SKILL_KEY = "st-skill";
+  const SKILL_KEY = "st-skill-v2"; // curriculum v2 (home row / top+bottom / special characters / expert)
   let skillLesson = null, arcadeBackup = null, skillRun = null, menuTier = null;
   let menuMode = store.get("st-mode", "arcade") === "skill" ? "skill" : "arcade";
   const rnd = (n) => (Math.random() * n) | 0;
@@ -2264,10 +2269,10 @@ legend { font-size: 12px; letter-spacing: 0.14em; text-transform: uppercase; col
       return ws.length ? caseSoft(L, pick(ws)) : one();
     };
     if (L.kind === "gibberish") return gibFrom(L, 2 + rnd(3));
+    if (L.kind === "caps") return Math.random() < 0.4 ? pick(L.letters).toUpperCase() : cap1(properCase(word(6)));
     if (L.tier === 0) return L.kind === "review" && words.length && Math.random() < 0.35 ? word(4) : one();
     if (L.tier === 1) {
       const r = Math.random();
-      if (L.kind === "caps") return r < 0.4 ? pick(L.letters).toUpperCase() : cap1(properCase(word(5)));
       if (r < 0.4) return one();
       if (r < 0.65) return mixGroup(fresh || L.letters, L.letters, 2 + rnd(2));
       return word(5);
@@ -2297,7 +2302,7 @@ legend { font-size: 12px; letter-spacing: 0.14em; text-transform: uppercase; col
     if (L.kind === "gibberish") {
       return Array.from({ length: n }, () => Array.from({ length: 3 + rnd(2) }, () => gibFrom(L, 2 + rnd(4))).join(" "));
     }
-    if (L.tier >= 2 && L.kind !== "review") {
+    if (["sentences", "numbers", "mixed"].includes(L.kind)) {
       const ss = sentencesFor(L).slice().sort((a, b) => a.length - b.length);
       const half = Math.max(n + 1, Math.ceil(ss.length / 2));
       cands = kind === "normal" && L.tier === 2 ? ss.slice(0, half) : ss.slice(-half);
